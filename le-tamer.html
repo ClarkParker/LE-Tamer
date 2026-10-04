@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LE-Tamer – Cubase Logical Editor Preset-Builder</title>
+<style>
+:root{--bg:#1e1f24;--panel:#26282f;--panel2:#2e3139;--line:#3a3e48;--fg:#e6e6e9;--muted:#9aa0ad;--accent:#6ec1ff;--ok:#5fcf80;--warn:#ffb454;--err:#ff6b6b;--mono:ui-monospace,Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+header h1{font-size:18px;margin:0 12px 0 0}
+main{display:grid;grid-template-columns:1fr 340px;gap:12px;padding:12px 16px}
+@media(max-width:1000px){main{grid-template-columns:1fr}}
+section{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+section h2{font-size:14px;margin:0 0 8px;color:var(--accent);text-transform:uppercase;letter-spacing:.04em}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;color:var(--muted);text-align:left;padding:2px 4px;font-weight:600}
+td{padding:2px 3px;vertical-align:middle}
+select,input[type=text],input[type=number]{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:4px 6px;font:inherit;width:100%;min-width:0}
+input[type=number]{width:84px}
+select.sm{width:52px}
+button{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:5px;padding:5px 10px;font:inherit;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:#08131c;border-color:var(--accent);font-weight:600}
+button.icon{padding:3px 7px}
+.row-tools{white-space:nowrap}
+.muted{color:var(--muted)}
+.preview{font-family:var(--mono);font-size:13px;background:var(--panel2);border-radius:6px;padding:8px 10px;white-space:pre-wrap;word-break:break-word}
+.explain{margin-top:6px}
+.warn{color:var(--warn)}.err{color:var(--err)}.ok{color:var(--ok)}
+ul.msgs{margin:6px 0 0;padding-left:18px}
+#help{position:sticky;top:12px}
+#help .body{min-height:120px}
+.kbd{font-family:var(--mono);background:var(--panel2);padding:1px 5px;border-radius:3px;border:1px solid var(--line)}
+.hex{font-family:var(--mono);font-size:12px;white-space:pre;overflow:auto;max-height:320px;background:var(--panel2);padding:8px;border-radius:6px}
+.badge{display:inline-block;font-size:10px;padding:1px 6px;border-radius:10px;border:1px solid var(--line);color:var(--muted);margin-left:6px}
+.badge.exp{border-color:var(--warn);color:var(--warn)}
+.drop{border:2px dashed var(--line);border-radius:8px;padding:10px;text-align:center;color:var(--muted)}
+.drop.over{border-color:var(--accent);color:var(--accent)}
+.rawrow td{font-family:var(--mono);font-size:12px;color:var(--muted)}
+label.inl{display:inline-flex;gap:6px;align-items:center;margin-right:10px}
+footer{padding:8px 16px;color:var(--muted);font-size:12px}
+details summary{cursor:pointer;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <h1>LE-Tamer</h1>
+  <label class="inl"><input type="radio" name="kind" value="LE" checked> Logical Editor</label>
+  <label class="inl"><input type="radio" name="kind" value="PLE"> Project Logical Editor <span class="badge exp">experimentell</span></label>
+  <label class="inl">Preset-Name <input type="text" id="presetName" value="Mein Preset" style="width:220px"></label>
+  <label class="inl">Kommentar <input type="text" id="comment" placeholder="optional" style="width:220px"></label>
+  <label class="inl">Rezept <select id="recipes" style="width:260px"></select></label>
+  <button id="btnInit" title="Alles zurücksetzen (wie Cubase-Preset „Init“)">Init</button>
+</header>
+<main>
+<div>
+  <section>
+    <h2>Event Target Filters</h2>
+    <table id="filters"><thead><tr><th>(</th><th>Filter Target</th><th>Condition</th><th>Parameter 1</th><th>Parameter 2</th><th>)</th><th>Bool</th><th></th></tr></thead><tbody></tbody></table>
+    <div style="margin-top:6px"><button id="addFilter">+ Filterzeile</button></div>
+  </section>
+  <section>
+    <h2>Functions</h2>
+    <select id="func" style="width:260px"></select>
+    <span id="funcHint" class="muted" style="margin-left:10px"></span>
+  </section>
+  <section id="actionsSec">
+    <h2>Event Transform Actions</h2>
+    <table id="actions"><thead><tr><th>Action Target</th><th>Operation</th><th>Parameter 1</th><th>Parameter 2</th><th></th></tr></thead><tbody></tbody></table>
+    <div style="margin-top:6px"><button id="addAction">+ Aktionszeile</button></div>
+  </section>
+  <section>
+    <h2>Vorschau &amp; Prüfung</h2>
+    <div class="preview" id="preview"></div>
+    <div class="explain" id="explain"></div>
+    <ul class="msgs" id="msgs"></ul>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="primary" id="btnExport">⬇ Als .xml speichern</button>
+      <button id="btnCopyHex">Hex kopieren</button>
+      <label class="inl"><input type="checkbox" id="showHex"> Hex-Ansicht</label>
+      <span class="muted" id="sizeInfo"></span>
+    </div>
+    <div class="hex" id="hex" style="display:none;margin-top:8px"></div>
+  </section>
+  <section>
+    <h2>Import</h2>
+    <div class="drop" id="drop">Preset-.xml hier ablegen oder <label style="color:var(--accent);cursor:pointer"><input type="file" id="file" accept=".xml" style="display:none">Datei wählen</label></div>
+    <div id="importInfo" class="muted" style="margin-top:6px"></div>
+  </section>
+</div>
+<aside>
+  <section id="help"><h2>Hilfe</h2><div class="body" id="helpBody">Feld anklicken oder mit der Maus darüber fahren – hier erscheint die Erklärung.</div></section>
+  <section><h2>Speicherort</h2><div id="pathInfo" class="muted"></div></section>
+  <section><h2>Status der Code-Tabellen</h2><div class="muted">✅ verifiziert · 🟡 aus Menü-Reihenfolge abgeleitet (ungetestet). Felder mit 🟡 bitte nach dem ersten Laden in Cubase prüfen. Fehlende Ziele (Channel, Length, Last Event …) werden ergänzt, sobald je ein Mini-Preset aus Cubase vorliegt.</div></section>
+</aside>
+</main>
+<footer>LE-Tamer · offline, eine Datei · Format-Spezifikation und Quellen im Repository (docs/06-preset-dateiformat.md)</footer>
+
+<script id="le-core">
+/* ================================================================
+   LE-Tamer core: Decoder/Encoder für Cubase Logical-Editor-Presets
+   Wird auch von tools/roundtrip-test.mjs geladen (ohne DOM).
+   ================================================================ */
+var LE = (function () {
+  'use strict';
+  var MAGIC = 0x4000, LISTMARK = 0x0A;
+  var CODES = {
+    tokens: {101:'(',102:')',103:'And',104:'Or'},
+    functions: {0:'Delete',1:'Transform',2:'Insert',3:'Insert Exclusive',4:'Copy',5:'Extract to Track',6:'Select',7:'Extract to Lanes',8:'Deselect'},
+    functionsInferred: {3:1,7:1,8:1},
+    conditions: {200:'Equal',201:'Unequal',202:'Bigger',203:'Bigger or Equal',204:'Less',205:'Less or Equal',206:'Inside Bar Range',207:'Inside Range',208:'Outside Bar Range',209:'Outside Range',210:'Contains',211:'Property is Set',212:'Property is Not Set',213:'Contains Not',216:'Before Cursor',217:'Beyond Cursor',218:'Inside Cycle',219:'Outside Cycle',220:'Inside Track Loop',221:'Exactly Matching Cycle',222:'Inside Selected Marker'},
+    conditionsInferred: {202:1,203:1,204:1,205:1,208:1,213:1,219:1,220:1,221:1,222:1},
+    operations: {221:'(keine)',304:'Add',306:'Subtract',307:'Multiply by',308:'Divide by',309:'Round by',310:'Set Random Values Between',312:'Set to Fixed Value',313:'Set Relative Random Values Between',331:'Folder',332:'Record',333:'Monitor',334:'Solo',335:'Mute',336:'Read',337:'Write',338:'EQ Bypass',339:'Inserts Bypass',340:'Sends Bypass',341:'Enable Send Slot by Number',342:'Enable Insert Slot by Number',343:'Hide Track'},
+    operationsInferred: {309:1,313:1,332:1,333:1,334:1,335:1,336:1,337:1,338:1,339:1,340:1,341:1,342:1,343:1},
+    actionTargets: {4000:'Position',4001:'Length',4002:'Subtype (Value 1)',4003:'Main Value (Value 2)',4012:'Track Operation'},
+    filterTargets: {leTypesTarget:'Type',leValue1Target:'Subtype (Value 1)',leValue2Target:'Main Value (Value 2)',lePositionTarget:'Position',leFlagsTarget:'Property',leContextTypeTarget:'Context Variable',leContainerTypeTarget:'Container Type',leNameTypeTarget:'Name'},
+    eventTypes: ['Note','Poly Pressure','Controller','Program Change','Aftertouch','Pitchbend','VST 3 Event','SysEx','SMF Event'],
+    eventTypesInferred: {1:1,3:1,6:1,7:1,8:1},
+    properties: ['Muted','Selected','Empty','Inside NoteExp','Is valid VST 3','Hidden','Has Track Version','Follows Chord Track','Is Disabled','Parent Object Is Selected'],
+    propertiesInferred: {2:1,3:1,4:1,6:1,7:1,8:1,9:1},
+    contextVars: ['Highest Pitch','Lowest Pitch','Average Pitch','Highest Velocity','Lowest Velocity','Average Velocity','Highest CC Value','Lowest CC Value','Average CC Value','No. of Notes in Chord (Part)','No. of Voices (Part)','Position in Chord (Part)','Note Number in Chord (lowest = 0)','Position in Chord (Chord Track)','Voice','Highest in Chord from at Least n Notes','Lowest in Chord from at Least n Notes'],
+    contextVarsInferred: {1:1,2:1,4:1,5:1,6:1,7:1,8:1,9:1,10:1,11:1,12:1,15:1,16:1},
+    contextVarsNeedP2: {9:1,10:1,11:1,12:1,13:1,14:1,15:1,16:1},
+    containerTypes: ['Folder Track','Track','Part','Event'],
+    containerTypesInferred: {1:1,2:1,3:1},
+    genericOp: ['Enable / Open','Disable / Close','Toggle'],
+    genericOpInferred: {1:1,2:1}
+  };
+  // Basisklassen-Ketten (direkte Basis zuerst, Wurzel zuletzt) – beobachtet in Cubase 9/13-Dateien.
+  var CHAINS = {
+    leToken:['CmObject'], leConditionTarget:['leToken','CmObject'],
+    UIntValue:['UValue'], UFloatValue:['UValue'],
+    LeUIntValue:['UIntValue','UValue'], LeTypeValue:['UIntValue','UValue'], LeGenericOpValue:['UIntValue','UValue'],
+    LeContainerTypeValue:['UIntValue','UValue'], LeDomainTypeValue:['UIntValue','UValue'],
+    LeFlagsValue:['LeUIntValue','UIntValue','UValue'], PControllerValue:['LeUIntValue','UIntValue','UValue'],
+    LeUFloatValue:['UFloatValue','UValue'], UStringValue:['UValue']
+  };
+  function chainFor(cls) {
+    if (CHAINS[cls]) return CHAINS[cls];
+    if (cls.indexOf('leActionTarget') === 0) return ['leActionBase', 'CmObject'];
+    if (cls.indexOf('le') === 0 && /Target$/.test(cls)) return ['leConditionTarget', 'leToken', 'CmObject'];
+    return [];
+  }
+  var VALUE12 = {LeUIntValue:1, PControllerValue:1, LeFlagsValue:1, LeTypeValue:1, LeUFloatValue:1};
+  var VALUE4 = {LeContainerTypeValue:1, LeDomainTypeValue:1, LeGenericOpValue:1, UIntValue:1, UFloatValue:1};
+  var FLOATCLS = {LeUFloatValue:1, UFloatValue:1};
+
+  /* ---------- Hilfsfunktionen ---------- */
+  function hexToBytes(hex) {
+    hex = hex.replace(/[^0-9a-fA-F]/g, '');
+    var out = new Uint8Array(hex.length / 2);
+    for (var i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
+    return out;
+  }
+  function bytesToHex(b) {
+    var s = '';
+    for (var i = 0; i < b.length; i++) s += (b[i] < 16 ? '0' : '') + b[i].toString(16).toUpperCase();
+    return s;
+  }
+  function latin1(bytes) { var s = ''; for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]); return s; }
+  function utf8Encode(str) { return new TextEncoder().encode(str); }
+  function utf8Decode(bytes) { return new TextDecoder('utf-8').decode(bytes); }
+  function bytesEqual(a, b) { if (a.length !== b.length) return false; for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return false; return true; }
+
+  /* ---------- XML-Hülle ---------- */
+  function parseXml(text) {
+    var m = /<bin name="Preset">([\s\S]*?)<\/bin>/.exec(text);
+    if (!m) throw new Error('Kein <bin name="Preset"> gefunden – keine LE/PLE-Preset-Datei.');
+    var root = /<(\w+)>/.exec(text.replace(/<\?xml[^>]*\?>/, ''))[1];
+    var cm = /<int name="Can Modify" value="(\d+)"/.exec(text);
+    return {root: root, canModify: cm ? +cm[1] : 1, bytes: hexToBytes(m[1])};
+  }
+  function toXml(root, bytes, canModify) {
+    var hex = bytesToHex(bytes), lines = [];
+    for (var i = 0; i < hex.length; i += 64) lines.push('\t\t' + hex.substr(i, 64));
+    return '<?xml version="1.0" encoding="utf-8"?>\r\n<' + root + '>\r\n   <int name="Can Modify" value="' + (canModify == null ? 1 : canModify) + '"/>\r\n   <bin name="Preset">\r\n' + lines.join('\r\n') + '\r\n   </bin>\r\n</' + root + '>\r\n';
+  }
+
+  /* ---------- Decoder ---------- */
+  function Reader(b) { this.b = b; this.dv = new DataView(b.buffer, b.byteOffset, b.byteLength); this.i = 0; this.classes = {}; this.errors = []; }
+  Reader.prototype.u32 = function () { var v = this.dv.getUint32(this.i, true); this.i += 4; return v; };
+  Reader.prototype.i32 = function () { var v = this.dv.getInt32(this.i, true); this.i += 4; return v; };
+  Reader.prototype.u16 = function () { var v = this.dv.getUint16(this.i, true); this.i += 2; return v; };
+  Reader.prototype.f32 = function () { var v = this.dv.getFloat32(this.i, true); this.i += 4; return v; };
+  Reader.prototype.peek32 = function (o) { o = o || 0; return this.i + o + 4 <= this.b.length ? this.dv.getUint32(this.i + o, true) : null; };
+  Reader.prototype.cstr = function () {
+    var ln = this.u32(); var raw = this.b.subarray(this.i, this.i + ln); this.i += ln;
+    var end = raw.indexOf(0); return latin1(end < 0 ? raw : raw.subarray(0, end));
+  };
+  Reader.prototype.isTag = function () {
+    var t = this.peek32(); if (t === null) return false;
+    if (t === 0xFFFFFFFE || t === 0xFFFFFFFF) { var ln = this.peek32(4); return ln !== null && ln > 0 && ln < 48; }
+    return (t >>> 16) === 0x8000 && this.classes[t & 0xFFFF] !== undefined;
+  };
+  Reader.prototype.obj = function () {
+    var bases = [], off, name, ver, kind;
+    while (this.peek32() === 0xFFFFFFFE) { off = this.i; this.i += 4; name = this.cstr(); ver = this.u16(); bases.push({name: name, ver: ver}); this.classes[off] = name; }
+    var tag = this.peek32();
+    if (tag === 0xFFFFFFFF) { off = this.i; this.i += 4; name = this.cstr(); ver = this.u16(); this.classes[off] = name; kind = 'new'; }
+    else if (tag !== null && (tag >>> 16) === 0x8000) { this.i += 4; off = tag & 0xFFFF; name = this.classes[off]; ver = 0; kind = 'ref'; if (name === undefined) throw new Error('Unaufgelöste Klassenreferenz 0x' + off.toString(16) + ' bei Offset ' + (this.i - 4)); }
+    else throw new Error('Ungültiges Objekt-Tag bei Offset ' + this.i);
+    var size = this.u32(), start = this.i, end = start + size;
+    var o = {cls: name, kind: kind, off: off, ver: ver, bases: bases, size: size};
+    if (name.indexOf('leActionTarget') === 0) {
+      o.type = 'action'; o.flags16 = this.u16(); o.op = this.u32(); o.target = this.u32(); o.items = [];
+      while (this.i < end) o.items.push(this.isTag() ? this.obj() : this.i32());
+    } else if (name.indexOf('le') === 0 && /Target$/.test(name)) {
+      o.type = 'cond'; o.c0 = this.u32(); o.cond = this.u32(); o.c2 = this.u32(); o.items = [];
+      while (this.i < end) o.items.push(this.isTag() ? this.obj() : this.i32());
+    } else if (name === 'leToken') { o.type = 'token'; o.token = this.u32(); }
+    else if (VALUE12[name] && size === 12) { o.type = 'val12'; o.min = this.i32(); o.max = this.i32(); o.value = FLOATCLS[name] ? this.f32() : this.i32(); }
+    else if (VALUE4[name] && size === 4) { o.type = 'val4'; o.value = FLOATCLS[name] ? this.f32() : this.i32(); }
+    else if (name === 'UStringValue') { o.type = 'str'; o.raw = this.b.slice(start, end); try { var ln = this.dv.getUint32(start, true); var sb = this.b.subarray(start + 4, start + 4 + ln); var z = sb.indexOf(0); o.str = utf8Decode(z < 0 ? sb : sb.subarray(0, z)); } catch (e) { o.str = ''; } this.i = end; }
+    else { o.type = 'raw'; o.raw = this.b.slice(start, end); this.i = end; }
+    if (this.i !== end) { this.errors.push('Größenabweichung in ' + name + ' (' + this.i + ' statt ' + end + ')'); this.i = end; }
+    return o;
+  };
+  Reader.prototype.list = function () {
+    var m = this.u32(), v = this.u16(), n = this.u32(), out = [];
+    if (m !== LISTMARK || v !== 1) this.errors.push('Unerwarteter Listenkopf ' + m + '/' + v);
+    for (var k = 0; k < n; k++) out.push(this.obj());
+    return out;
+  };
+  function decode(bytes) {
+    var r = new Reader(bytes), d = {};
+    d.magic = r.u32(); d.one = r.u32();
+    var cl = r.u32(); d.comment = bytes.slice(r.i, r.i + cl); r.i += cl;
+    d.actions = r.list(); d.filters = r.list();
+    d.trailer = []; while (r.i + 4 <= bytes.length) d.trailer.push(r.i32());
+    d.tail = bytes.slice(r.i); d.errors = r.errors; d.classes = r.classes;
+    return d;
+  }
+  function commentText(d) { var z = d.comment.indexOf(0); return utf8Decode(z < 0 ? d.comment : d.comment.subarray(0, z)); }
+
+  /* ---------- Encoder ---------- */
+  function Writer() { this.a = []; this.classes = {}; this.scratch = new DataView(new ArrayBuffer(8)); }
+  Writer.prototype.len = function () { return this.a.length; };
+  Writer.prototype.bytes = function (b) { for (var i = 0; i < b.length; i++) this.a.push(b[i]); };
+  Writer.prototype.u32 = function (v) { v >>>= 0; this.a.push(v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255); };
+  Writer.prototype.i32 = Writer.prototype.u32;
+  Writer.prototype.u16 = function (v) { this.a.push(v & 255, (v >>> 8) & 255); };
+  Writer.prototype.f32 = function (v) { this.scratch.setFloat32(0, v, true); this.u32(this.scratch.getUint32(0, true)); };
+  Writer.prototype.tag = function (marker, name, ver) { this.u32(marker); var nb = utf8Encode(name); this.u32(nb.length + 1); this.bytes(nb); this.a.push(0); this.u16(ver || 0); };
+  Writer.prototype.patch32 = function (pos, v) { v >>>= 0; this.a[pos] = v & 255; this.a[pos + 1] = (v >>> 8) & 255; this.a[pos + 2] = (v >>> 16) & 255; this.a[pos + 3] = (v >>> 24) & 255; };
+  Writer.prototype.obj = function (o) {
+    var self = this, bases;
+    if (o.bases) bases = o.bases;                      // aus Datei: genau so wieder schreiben
+    else bases = chainFor(o.cls).filter(function (n) { return self.classes[n] === undefined; }).map(function (n) { return {name: n, ver: 0}; });
+    bases.forEach(function (b) { self.classes[b.name] = self.len(); self.tag(0xFFFFFFFE, b.name, b.ver); });
+    if (this.classes[o.cls] !== undefined) this.u32(0x80000000 | this.classes[o.cls]);
+    else { this.classes[o.cls] = this.len(); this.tag(0xFFFFFFFF, o.cls, o.ver || 0); }
+    var sizePos = this.len(); this.u32(0); var start = this.len();
+    switch (o.type) {
+      case 'token': this.u32(o.token); break;
+      case 'cond': this.u32(o.c0 == null ? 100 : o.c0); this.u32(o.cond); this.u32(o.c2 || 0); this.items(o.items); break;
+      case 'action': this.u16(o.flags16 || 0); this.u32(o.op); this.u32(o.target); this.items(o.items); break;
+      case 'val12': this.i32(o.min); this.i32(o.max); if (FLOATCLS[o.cls]) this.f32(o.value); else this.i32(o.value); break;
+      case 'val4': if (FLOATCLS[o.cls]) this.f32(o.value); else this.i32(o.value); break;
+      case 'str': if (o.raw) this.bytes(o.raw); else { var sb = utf8Encode(o.str || ''); this.u32(sb.length + 1); this.bytes(sb); this.a.push(0); } break;
+      case 'raw': this.bytes(o.raw); break;
+      default: throw new Error('Unbekannter Objekttyp ' + o.type);
+    }
+    this.patch32(sizePos, this.len() - start);
+  };
+  Writer.prototype.items = function (items) { for (var i = 0; i < items.length; i++) { var it = items[i]; if (typeof it === 'number') this.i32(it); else this.obj(it); } };
+  Writer.prototype.list = function (objs) { this.u32(LISTMARK); this.u16(1); this.u32(objs.length); for (var i = 0; i < objs.length; i++) this.obj(objs[i]); };
+  function encode(d) {
+    var w = new Writer();
+    w.u32(d.magic == null ? MAGIC : d.magic); w.u32(d.one == null ? 1 : d.one);
+    var c = d.comment || new Uint8Array(0); w.u32(c.length); w.bytes(c);
+    w.list(d.actions || []); w.list(d.filters || []);
+    (d.trailer || [0, 1, 0, 0, 0, 0, 0]).forEach(function (v) { w.i32(v); });
+    if (d.tail) w.bytes(d.tail);
+    return new Uint8Array(w.a);
+  }
+
+  /* ---------- Objekt-Konstruktoren (für neue Presets) ---------- */
+  function tok(t) { return {cls: 'leToken', type: 'token', token: t}; }
+  function v12(cls, min, max, value) { return {cls: cls, type: 'val12', min: min, max: max, value: value}; }
+  function v4(cls, value) { return {cls: cls, type: 'val4', value: value}; }
+  function cond(cls, condCode, items) { return {cls: cls, type: 'cond', c0: 100, cond: condCode, c2: 0, items: items}; }
+  function action(cls, target, op, p1, p2) { return {cls: cls, type: 'action', flags16: 0, op: op, target: target, items: [p1, p2]}; }
+  var MAXINT = 0x7FFFFFFF;
+  var make = {
+    type: function (c, t) { return cond('leTypesTarget', c, [v12('LeTypeValue', 0, 8, t), v12('LeUIntValue', 0, MAXINT, 0), 0]); },
+    value1: function (c, p1, p2) { return cond('leValue1Target', c, [v12('LeUIntValue', 0, 127, p1), v12('LeUIntValue', 0, 127, p2 || 0)]); },
+    value2: function (c, p1, p2) { return cond('leValue2Target', c, [v12('LeUIntValue', 0, 127, p1), v12('LeUIntValue', 0, 127, p2 || 0)]); },
+    position: function (c, p1, p2, barLen) { barLen = barLen || 1920; return cond('lePositionTarget', c, [v12('LeUIntValue', 0, barLen, p1), v12('LeUIntValue', 0, barLen, p2 || 0)]); },
+    property: function (c, idx) { return cond('leFlagsTarget', c, [v12('LeFlagsValue', 0, 7, idx), v12('LeUIntValue', 0, MAXINT, 0)]); },
+    context: function (c, p1, p2) { return cond('leContextTypeTarget', c, [p1, p2 || 0]); },
+    container: function (c, t) { return cond('leContainerTypeTarget', c, [v4('LeContainerTypeValue', t), v12('LeUIntValue', 0, 255, 0)]); },
+    name: function (c, text) { return cond('leNameTypeTarget', c, [{cls: 'UStringValue', type: 'str', str: text}, v12('LeUIntValue', 0, 255, 0)]); },
+    actInt: function (target, op, p1, p2) { var cls = target === 4002 ? 'leActionTargetValue1' : 'leActionTargetValue2'; return action(cls, target, op, v12('LeUIntValue', 0, 127, p1), v12('LeUIntValue', 0, 127, p2 || 0)); },
+    actFloat: function (target, op, p1) { var cls = target === 4002 ? 'leActionTargetValue1' : 'leActionTargetValue2'; return action(cls, target, op, v12('LeUFloatValue', 0, 127, p1), v12('LeUFloatValue', 0, 127, 0)); },
+    trackOp: function (op, mode) { return action('leActionTargetTrackOp', 4012, op, v4('LeGenericOpValue', mode), v12('LeUIntValue', 0, 1, 0)); }
+  };
+
+  /* ---------- Beschreibung ---------- */
+  function noteName(n) { var N = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']; return N[n % 12] + (Math.floor(n / 12) - 2); }
+  function pval(o) {
+    if (o == null) return '-';
+    if (typeof o === 'number') return String(o);
+    if (o.type === 'val12' || o.type === 'val4') return String(o.value);
+    if (o.type === 'str') return JSON.stringify(o.str);
+    return o.cls + '[' + (o.raw ? o.raw.length : o.size) + 'B]';
+  }
+  function describeCond(o, ctx) {
+    var tgt = CODES.filterTargets[o.cls] || o.cls, c = CODES.conditions[o.cond] || ('cond#' + o.cond);
+    var params = o.items.filter(function (x) { return typeof x !== 'number'; }), ints = o.items.filter(function (x) { return typeof x === 'number'; });
+    var p1, p2;
+    if (o.cls === 'leContextTypeTarget') { p1 = CODES.contextVars[ints[0]] || ints[0]; p2 = ints.length > 1 ? ints[1] : (params[0] ? pval(params[0]) : null); }
+    else { p1 = pval(params[0]); p2 = pval(params[1]); }
+    if (o.cls === 'leTypesTarget' && params[0]) { p1 = CODES.eventTypes[params[0].value] || p1; if (params[0].value === 0) ctx.note = true; if (params[0].value === 2) ctx.cc = true; }
+    if (o.cls === 'leFlagsTarget' && params[0]) p1 = CODES.properties[params[0].value] || p1;
+    if (o.cls === 'leContainerTypeTarget' && params[0]) p1 = CODES.containerTypes[params[0].value] || p1;
+    if (o.cls === 'leValue1Target' && ctx.note && params[0]) { tgt = 'Pitch'; p1 = noteName(params[0].value) + ' (' + params[0].value + ')'; if (params[1]) p2 = noteName(params[1].value) + ' (' + params[1].value + ')'; }
+    if (o.cls === 'leValue1Target' && ctx.cc) tgt = 'CC-Nummer';
+    if (o.cls === 'leValue2Target' && ctx.note) tgt = 'Velocity';
+    if (o.cls === 'leValue2Target' && ctx.cc) tgt = 'CC-Wert';
+    var usesP2 = o.cond === 207 || o.cond === 209 || o.cond === 206 || o.cond === 208 || (o.cls === 'leContextTypeTarget' && CODES.contextVarsNeedP2[ints[0]]);
+    var s = tgt + ' ' + c;
+    if (o.cond === 211 || o.cond === 212) s = tgt + ': ' + p1 + ' ' + c;
+    else if (o.cond === 216 || o.cond === 217 || (o.cond >= 218 && o.cond <= 222)) s = tgt + ' ' + c;
+    else s += ' ' + p1 + (usesP2 ? ' … ' + p2 : '');
+    return s;
+  }
+  function describeAction(o) {
+    var tgt = CODES.actionTargets[o.target] || ('target#' + o.target), op = CODES.operations[o.op] || ('op#' + o.op);
+    var params = o.items.filter(function (x) { return typeof x !== 'number'; });
+    var p1 = pval(params[0]), p2 = pval(params[1]);
+    if (o.target === 4012) { var m = params[0] && params[0].type === 'val4' ? CODES.genericOp[params[0].value] : p1; return 'Track Operation: ' + op + ' → ' + m; }
+    var two = o.op === 310 || o.op === 313;
+    return tgt + ' ' + op + ' ' + p1 + (two ? ' … ' + p2 : '');
+  }
+  function describe(d) {
+    var ctx = {}, parts = [];
+    d.filters.forEach(function (o) {
+      if (o.type === 'token') parts.push(CODES.tokens[o.token] || ('tok#' + o.token));
+      else if (o.type === 'cond') parts.push('[' + describeCond(o, ctx) + ']');
+      else parts.push(o.cls);
+    });
+    var fn = d.trailer && d.trailer.length > 1 ? (CODES.functions[d.trailer[1]] || ('fn#' + d.trailer[1])) : 'Transform (legacy)';
+    var acts = d.actions.map(describeAction);
+    return {filter: parts.join(' '), func: fn, actions: acts, text: parts.join(' ') + '\n→ ' + fn + (acts.length ? ': ' + acts.join(' ; ') : '')};
+  }
+
+  return {CODES: CODES, CHAINS: CHAINS, chainFor: chainFor, hexToBytes: hexToBytes, bytesToHex: bytesToHex, bytesEqual: bytesEqual,
+    parseXml: parseXml, toXml: toXml, decode: decode, encode: encode, commentText: commentText, utf8Encode: utf8Encode,
+    make: make, tok: tok, describe: describe, noteName: noteName, MAXINT: MAXINT};
+})();
+if (typeof module !== 'undefined') module.exports = LE;
+</script>
+
+<script id="le-ui">
+/* ================================================================
+   UI – Modell, Rendering, Validierung, Import/Export
+   ================================================================ */
+(function () {
+  'use strict';
+  var C = LE.CODES, $ = function (s) { return document.querySelector(s); };
+  var INF = ' 🟡';
+  var TDEF = {
+    type:      {label: 'Type',                        conds: [200, 201],                                p1: 'eventType'},
+    value1:    {label: 'Subtype (Value 1 / Pitch / CC-Nr.)', conds: [200, 201, 202, 203, 204, 205, 207, 209], p1: 'num127'},
+    value2:    {label: 'Main Value (Value 2 / Velocity / CC-Wert)', conds: [200, 201, 202, 203, 204, 205, 207, 209], p1: 'num127'},
+    position:  {label: 'Position (Bar Range in Ticks)', conds: [206, 208],                              p1: 'ticks'},
+    property:  {label: 'Property',                    conds: [211, 212],                                p1: 'property'},
+    context:   {label: 'Context Variable',            conds: [200, 201, 202, 203, 204, 205],            p1: 'contextVar'},
+    container: {label: 'Container Type',              conds: [200, 201],                                p1: 'containerType'},
+    name:      {label: 'Name',                        conds: [200, 210, 213],                           p1: 'text'}
+  };
+  var TARGETS = {LE: ['type', 'value1', 'value2', 'position', 'property', 'context'], PLE: ['container', 'name', 'property']};
+  var ATARGETS = {LE: [4002, 4003], PLE: [4012]};
+  var OPS_VALUE = [304, 306, 307, 308, 309, 310, 312, 313], OPS_TRACK = [331, 332, 333, 334, 335, 336, 337, 338, 339, 340, 341, 342, 343];
+  var FUNC_USES_ACTIONS = {1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 7: 1};
+  var HELP = {
+    kind: 'LE = MIDI-Events in ausgewählten Parts (MIDI > Logical Editor). PLE = Spuren/Parts/Events im Projektfenster (Project > Project Logical Editor). PLE-Unterstützung ist experimentell: nur Container Type, Name, Property und Track Operation.',
+    presetName: 'Wird Dateiname (<Name>.xml) und damit Preset-Name im Browser. Unterordner im User-Preset-Ordner = Kategorie.',
+    comment: 'Freitext, wird in der Datei gespeichert (Cubase zeigt ihn nicht mehr an). Kann leer bleiben.',
+    func: 'Delete: gefundene Events löschen · Transform: Aktionen anwenden · Insert: transformierte Kopien zusätzlich einfügen · Insert Exclusive: alles Nicht-Gefundene löschen · Copy: auf neue Spur kopieren · Extract to Track/Lanes: auf neue Spur/Lane verschieben · Select/Deselect: nur (ab)wählen.',
+    lb: 'Linke Klammer(n). Nur nötig ab 3 Zeilen mit Or, z. B. Type = Note AND ( Pitch = C3 OR Channel = 1 ). Der Gesamtausdruck wird wie in Cubase automatisch eingeklammert.',
+    rb: 'Rechte Klammer(n). Muss zur linken Klammer passen.',
+    bool: 'And: beide Zeilen müssen zutreffen. Or: eine genügt. Klammern steuern die Reihenfolge.',
+    target_type: 'Event-Typ. Fast jedes Preset beginnt mit Type = Note oder Type = Controller – sonst trifft z. B. Main Value = 64 Noten mit Velocity 64 UND Controller mit Wert 64.',
+    target_value1: 'Subtype (früher Value 1): bei Noten die Tonhöhe (0–127, Eingabe auch C3, D#4; C3 = 60), bei Controllern die CC-Nummer, bei Program Change die Programmnummer, bei Aftertouch der Druck.',
+    target_value2: 'Main Value (früher Value 2): bei Noten die Velocity, bei Controllern der Wert, bei Pitchbend der Grobanteil. Nicht genutzt bei Program Change/Aftertouch.',
+    target_position: 'Nur Inside/Outside Bar Range: Zone innerhalb jedes Taktes in Ticks (480 pro Viertel, 1920 = ein 4/4-Takt). 0–100 = „auf der Eins“, 480 = Zwei, 960 = Drei, 1440 = Vier. Absolute Positionen/Cursor/Cycle brauchen eingebettete Tempo-Daten und sind noch nicht unterstützt.',
+    target_property: 'Cubase-Eigenschaft des Events: Muted, Selected … Bedingung „Property is Set“ / „is Not Set“. Mit „Selected“ lassen sich Presets auf die aktuelle Auswahl beschränken.',
+    target_context: 'Akkord-/Kontextanalyse: höchste/tiefste Note, Velocity, Anzahl Noten im Akkord, Stimme (Voice) … Eine Note gehört zu einem Akkord, wenn mindestens zwei weitere gleichzeitig klingen. Parameter 2 nur bei den Varianten mit „n“/Position/Voice.',
+    target_container: 'PLE: Folder Track, Track, Part oder Event. Factory-Presets kombinieren meist Container Type mit Name oder Property.',
+    target_name: 'PLE: Name der Spur/des Parts. Equal = exakt, Contains = enthält Text, Contains Not = enthält nicht.',
+    cond: 'Equal/Unequal/Bigger/Less … vergleichen mit Parameter 1. Inside/Outside Range nutzen Parameter 1 (klein) bis Parameter 2 (groß). Bar Range bezieht sich auf jeden Takt der Auswahl.',
+    p1: 'Parameter 1 – Vergleichswert. Bei Pitch sind Notennamen erlaubt (C3 = 60, Cubase-Konvention C3 = mittleres C).',
+    p2: 'Parameter 2 – nur bei Range-Bedingungen (obere Grenze) und bei Context-Variablen mit Zusatzwert aktiv.',
+    atarget: 'Was wird geändert? Subtype (Pitch/CC-Nummer), Main Value (Velocity/CC-Wert). Position/Length/Channel/Type folgen, sobald die Codes aus Cubase verifiziert sind.',
+    aop: 'Add/Subtract: ±Parameter 1 · Multiply/Divide: Faktor (1.1 = +10 %) · Round by: auf Vielfache · Set Random: Zufall zwischen P1 und P2 · Set to Fixed: fester Wert · Set Relative Random: Zufall aus P1..P2 addieren. Ergebnisse werden von Cubase auf 0–127 begrenzt.',
+    ap1: 'Parameter 1 der Aktion (Zahl, bei Multiply/Divide Dezimalzahl).',
+    ap2: 'Parameter 2 – nur bei Zufalls-Operationen (obere Grenze).',
+    recipes: 'Fertige Vorlagen aus der Dokumentation. Laden und anpassen.',
+    btnExport: 'Erzeugt die .xml im Cubase-Format. In den User-Preset-Ordner kopieren (siehe Speicherort), Cubase erkennt sie beim nächsten Öffnen des Preset-Browsers.',
+    file: 'Bestehende Preset-Dateien (auch Factory-Presets) laden, ansehen, ändern und neu speichern. Unbekannte Zeilen bleiben als Rohdaten erhalten und werden unverändert zurückgeschrieben.'
+  };
+
+  var model = freshModel();
+  function freshModel() { return {kind: 'LE', name: 'Mein Preset', comment: '', func: 1, filters: [{lb: 0, target: 'type', cond: 200, p1: 0, p2: 0, rb: 0, bool: 103}], actions: []}; }
+
+  /* ---------- Modell → Dokument ---------- */
+  function parseNum(v, allowNote) {
+    if (typeof v === 'number') return v;
+    v = String(v || '').trim();
+    if (allowNote) { var m = /^([A-Ha-h])([#b]?)(-?\d+)$/.exec(v); if (m) { var N = {C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11, H: 11}; var n = N[m[1].toUpperCase()] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + (parseInt(m[3], 10) + 2) * 12; return n; } }
+    var f = parseFloat(v.replace(',', '.')); return isNaN(f) ? 0 : f;
+  }
+  function rowToCond(r) {
+    var M = LE.make;
+    switch (r.target) {
+      case 'type': return M.type(r.cond, parseNum(r.p1));
+      case 'value1': return M.value1(r.cond, parseNum(r.p1, true), parseNum(r.p2, true));
+      case 'value2': return M.value2(r.cond, parseNum(r.p1), parseNum(r.p2));
+      case 'position': return M.position(r.cond, parseNum(r.p1), parseNum(r.p2));
+      case 'property': return M.property(r.cond, parseNum(r.p1));
+      case 'context': return M.context(r.cond, parseNum(r.p1), parseNum(r.p2));
+      case 'container': return M.container(r.cond, parseNum(r.p1));
+      case 'name': return M.name(r.cond, String(r.p1 || ''));
+      case 'raw': return r.raw;
+    }
+  }
+  function rowToAction(r) {
+    if (r.target === 'raw') return r.raw;
+    if (r.target === 4012) return LE.make.trackOp(r.op, parseNum(r.p1));
+    if (r.op === 307 || r.op === 308) return LE.make.actFloat(r.target, r.op, parseNum(r.p1));
+    return LE.make.actInt(r.target, r.op, parseNum(r.p1, r.target === 4002), parseNum(r.p2, r.target === 4002));
+  }
+  function buildDoc(m) {
+    var filters = [LE.tok(101)];
+    m.filters.forEach(function (r, i) {
+      for (var k = 0; k < (r.lb | 0); k++) filters.push(LE.tok(101));
+      filters.push(rowToCond(r));
+      for (k = 0; k < (r.rb | 0); k++) filters.push(LE.tok(102));
+      if (i < m.filters.length - 1) filters.push(LE.tok(r.bool || 103));
+    });
+    filters.push(LE.tok(102));
+    var cb = m.comment ? LE.utf8Encode(m.comment) : null, comment = new Uint8Array(cb ? cb.length + 1 : 0); if (cb) comment.set(cb);
+    return {magic: 0x4000, one: 1, comment: comment, actions: m.actions.map(rowToAction), filters: filters, trailer: [0, m.func, m.kind === 'PLE' ? 1 : 0, 0, 0, 0, 0]};
+  }
+
+  /* ---------- Dokument → Modell (Import) ---------- */
+  function isV12(o, cls) { return o && typeof o === 'object' && o.type === 'val12' && (!cls || o.cls === cls); }
+  function condToRow(o) {
+    var it = o.items, objs = it.filter(function (x) { return typeof x !== 'number'; }), ints = it.filter(function (x) { return typeof x === 'number'; });
+    var row = {lb: 0, rb: 0, bool: 103, cond: o.cond, p1: 0, p2: 0, target: 'raw', raw: o};
+    var known = TDEF;
+    if (o.cls === 'leTypesTarget' && isV12(objs[0], 'LeTypeValue') && known.type.conds.indexOf(o.cond) >= 0) { row.target = 'type'; row.p1 = objs[0].value; }
+    else if ((o.cls === 'leValue1Target' || o.cls === 'leValue2Target') && isV12(objs[0]) && isV12(objs[1]) && known.value1.conds.indexOf(o.cond) >= 0) { row.target = o.cls === 'leValue1Target' ? 'value1' : 'value2'; row.p1 = objs[0].value; row.p2 = objs[1].value; }
+    else if (o.cls === 'lePositionTarget' && isV12(objs[0], 'LeUIntValue') && isV12(objs[1], 'LeUIntValue') && (o.cond === 206 || o.cond === 208)) { row.target = 'position'; row.p1 = objs[0].value; row.p2 = objs[1].value; }
+    else if (o.cls === 'leFlagsTarget' && isV12(objs[0], 'LeFlagsValue') && (o.cond === 211 || o.cond === 212)) { row.target = 'property'; row.p1 = objs[0].value; }
+    else if (o.cls === 'leContextTypeTarget' && ints.length >= 1 && known.context.conds.indexOf(o.cond) >= 0) { row.target = 'context'; row.p1 = ints[0]; row.p2 = ints.length > 1 ? ints[1] : (isV12(objs[0]) ? objs[0].value : 0); }
+    else if (o.cls === 'leContainerTypeTarget' && objs[0] && objs[0].type === 'val4') { row.target = 'container'; row.p1 = objs[0].value; }
+    else if (o.cls === 'leNameTypeTarget' && objs[0] && objs[0].type === 'str') { row.target = 'name'; row.p1 = objs[0].str; }
+    if (row.target !== 'raw') delete row.raw;
+    return row;
+  }
+  function actionToRow(o) {
+    var objs = o.items.filter(function (x) { return typeof x !== 'number'; });
+    var row = {target: 'raw', op: o.op, p1: 0, p2: 0, raw: o};
+    if ((o.target === 4002 || o.target === 4003) && OPS_VALUE.indexOf(o.op) >= 0 && objs.length === 2 && (isV12(objs[0]) || objs[0].type === 'val4')) { row.target = o.target; row.p1 = objs[0].value; row.p2 = objs[1].value; delete row.raw; }
+    else if (o.target === 4012 && objs[0] && objs[0].type === 'val4') { row.target = 4012; row.p1 = objs[0].value; delete row.raw; }
+    return row;
+  }
+  function docToModel(d, root, name) {
+    var m = {kind: root === 'Project_Logical_EditorPreset' ? 'PLE' : 'LE', name: name, comment: LE.commentText(d), func: d.trailer.length > 1 ? d.trailer[1] : 1, filters: [], actions: d.actions.map(actionToRow)};
+    var toks = d.filters.slice();
+    // äußeres Klammerpaar entfernen, falls es den Gesamtausdruck umschließt
+    if (toks.length >= 2 && toks[0].type === 'token' && toks[0].token === 101 && toks[toks.length - 1].type === 'token' && toks[toks.length - 1].token === 102) {
+      var depth = 0, wraps = true;
+      for (var i = 0; i < toks.length - 1; i++) { if (toks[i].type === 'token' && toks[i].token === 101) depth++; if (toks[i].type === 'token' && toks[i].token === 102) depth--; if (depth === 0 && i < toks.length - 1) { wraps = false; break; } }
+      if (wraps) toks = toks.slice(1, -1);
+    }
+    var lb = 0, cur = null;
+    toks.forEach(function (t) {
+      if (t.type === 'token') {
+        if (t.token === 101) lb++;
+        else if (t.token === 102 && cur) cur.rb++;
+        else if ((t.token === 103 || t.token === 104) && cur) cur.bool = t.token;
+      } else { cur = t.type === 'cond' ? condToRow(t) : {lb: 0, rb: 0, bool: 103, target: 'raw', raw: t, cond: 0}; cur.lb = lb; lb = 0; m.filters.push(cur); }
+    });
+    return m;
+  }
+
+  /* ---------- Rendering ---------- */
+  function opt(v, label, sel, badge) { return '<option value="' + v + '"' + (String(v) === String(sel) ? ' selected' : '') + '>' + label + (badge ? INF : '') + '</option>'; }
+  function selectHtml(attrs, options) { return '<select ' + attrs + '>' + options.join('') + '</select>'; }
+  function p1Widget(r, i) {
+    var d = TDEF[r.target], a = 'data-i="' + i + '" data-f="p1" data-h="p1"';
+    switch (d.p1) {
+      case 'eventType': return selectHtml(a, C.eventTypes.map(function (n, k) { return opt(k, n, r.p1, C.eventTypesInferred[k]); }));
+      case 'property': return selectHtml(a, C.properties.map(function (n, k) { return opt(k, n, r.p1, C.propertiesInferred[k]); }));
+      case 'contextVar': return selectHtml(a, C.contextVars.map(function (n, k) { return opt(k, n, r.p1, C.contextVarsInferred[k]); }));
+      case 'containerType': return selectHtml(a, C.containerTypes.map(function (n, k) { return opt(k, n, r.p1, C.containerTypesInferred[k]); }));
+      case 'text': return '<input type="text" ' + a + ' value="' + esc(r.p1) + '">';
+      case 'ticks': return '<input type="text" ' + a + ' value="' + esc(r.p1) + '" title="Ticks 0–1920" style="width:90px">';
+      default: return '<input type="text" ' + a + ' value="' + esc(r.p1) + '" style="width:90px">';
+    }
+  }
+  function usesP2(r) { return r.cond === 206 || r.cond === 207 || r.cond === 208 || r.cond === 209 || (r.target === 'context' && C.contextVarsNeedP2[r.p1]); }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+  function renderFilters() {
+    var tb = $('#filters tbody'), html = '';
+    model.filters.forEach(function (r, i) {
+      var last = i === model.filters.length - 1;
+      if (r.target === 'raw') {
+        html += '<tr class="rawrow"><td>' + selectHtml('class="sm" data-i="' + i + '" data-f="lb" data-h="lb"', [0, 1, 2, 3].map(function (k) { return opt(k, k ? '('.repeat(k) : '–', r.lb); })) + '</td><td colspan="4">Rohdaten: ' + esc(r.raw.cls) + ' (cond ' + esc(r.raw.cond) + ', ' + esc(r.raw.size) + ' B) – nicht editierbar, wird unverändert exportiert</td>';
+      } else {
+        var d = TDEF[r.target];
+        html += '<tr><td>' + selectHtml('class="sm" data-i="' + i + '" data-f="lb" data-h="lb"', [0, 1, 2, 3].map(function (k) { return opt(k, k ? '('.repeat(k) : '–', r.lb); })) + '</td>';
+        html += '<td>' + selectHtml('data-i="' + i + '" data-f="target" data-h="target"', TARGETS[model.kind].map(function (t) { return opt(t, TDEF[t].label, r.target); })) + '</td>';
+        html += '<td>' + selectHtml('data-i="' + i + '" data-f="cond" data-h="cond"', d.conds.map(function (c) { return opt(c, C.conditions[c], r.cond, C.conditionsInferred[c]); })) + '</td>';
+        html += '<td>' + p1Widget(r, i) + '</td>';
+        html += '<td><input type="text" data-i="' + i + '" data-f="p2" data-h="p2" value="' + esc(r.p2) + '" style="width:90px"' + (usesP2(r) ? '' : ' disabled') + '></td>';
+      }
+      html += '<td>' + selectHtml('class="sm" data-i="' + i + '" data-f="rb" data-h="rb"', [0, 1, 2, 3].map(function (k) { return opt(k, k ? ')'.repeat(k) : '–', r.rb); })) + '</td>';
+      html += '<td>' + (last ? '<span class="muted">–</span>' : selectHtml('data-i="' + i + '" data-f="bool" data-h="bool"', [opt(103, 'And', r.bool), opt(104, 'Or', r.bool)])) + '</td>';
+      html += '<td class="row-tools"><button class="icon" data-act="up" data-i="' + i + '" title="nach oben">↑</button> <button class="icon" data-act="down" data-i="' + i + '" title="nach unten">↓</button> <button class="icon" data-act="del" data-i="' + i + '" title="löschen">✕</button></td></tr>';
+    });
+    tb.innerHTML = html;
+  }
+  function renderActions() {
+    var tb = $('#actions tbody'), html = '';
+    model.actions.forEach(function (r, i) {
+      if (r.target === 'raw') { html += '<tr class="rawrow"><td colspan="4">Rohdaten: ' + esc(r.raw.cls) + ' (op ' + esc(r.raw.op) + ', Ziel ' + esc(r.raw.target) + ') – nicht editierbar</td>'; }
+      else {
+        var ops = r.target === 4012 ? OPS_TRACK : OPS_VALUE, isFloat = r.op === 307 || r.op === 308, two = r.op === 310 || r.op === 313;
+        html += '<tr><td>' + selectHtml('data-i="' + i + '" data-f="target" data-h="atarget"', ATARGETS[model.kind].map(function (t) { return opt(t, C.actionTargets[t], r.target); })) + '</td>';
+        html += '<td>' + selectHtml('data-i="' + i + '" data-f="op" data-h="aop"', ops.map(function (o) { return opt(o, C.operations[o], r.op, C.operationsInferred[o]); })) + '</td>';
+        if (r.target === 4012) html += '<td>' + selectHtml('data-i="' + i + '" data-f="p1" data-h="ap1"', C.genericOp.map(function (n, k) { return opt(k, n, r.p1, C.genericOpInferred[k]); })) + '</td><td><input type="text" disabled value=""></td>';
+        else html += '<td><input type="text" data-i="' + i + '" data-f="p1" data-h="ap1" value="' + esc(r.p1) + '" style="width:90px" placeholder="' + (isFloat ? 'z. B. 1.1' : '0–127') + '"></td><td><input type="text" data-i="' + i + '" data-f="p2" data-h="ap2" value="' + esc(r.p2) + '" style="width:90px"' + (two ? '' : ' disabled') + '></td>';
+      }
+      html += '<td class="row-tools"><button class="icon" data-act="aup" data-i="' + i + '">↑</button> <button class="icon" data-act="adown" data-i="' + i + '">↓</button> <button class="icon" data-act="adel" data-i="' + i + '">✕</button></td></tr>';
+    });
+    tb.innerHTML = html;
+  }
+  function renderFunc() {
+    $('#func').innerHTML = Object.keys(C.functions).filter(function (k) { return model.kind === 'LE' || [0, 1, 6, 8].indexOf(+k) >= 0; }).map(function (k) { return opt(k, C.functions[k], model.func, C.functionsInferred[k]); }).join('');
+    $('#funcHint').textContent = FUNC_USES_ACTIONS[model.func] ? 'nutzt die Aktionsliste' : 'Aktionen werden ignoriert';
+    $('#actionsSec').style.opacity = FUNC_USES_ACTIONS[model.func] ? 1 : 0.55;
+  }
+  function renderHeader() {
+    document.querySelectorAll('input[name=kind]').forEach(function (r) { r.checked = r.value === model.kind; });
+    $('#presetName').value = model.name; $('#comment').value = model.comment;
+    var win = model.kind === 'PLE' ? 'Project Logical Editor' : 'Logical Edit';
+    $('#pathInfo').innerHTML = '<b>Windows:</b> <span class="kbd">%USERPROFILE%\\Documents\\Steinberg\\Cubase 15\\User Presets\\' + win + '\\</span><br><b>macOS:</b> <span class="kbd">~/Documents/Steinberg/Cubase 15/User Presets/' + win + '/</span><br><span class="muted">Im Preset-Browser „Show User Presets Location“ zeigt den exakten Ordner. Unterordner = Kategorie.</span>';
+  }
+  var lastBytes = null;
+  function renderPreview() {
+    var msgs = [], doc, bytes;
+    try { doc = buildDoc(model); bytes = LE.encode(doc); lastBytes = bytes; } catch (e) { $('#preview').textContent = 'Fehler: ' + e.message; $('#msgs').innerHTML = ''; return; }
+    var desc = LE.describe(doc);
+    $('#preview').textContent = desc.text;
+    $('#explain').innerHTML = explain(desc);
+    // Validierung
+    var hasType = model.filters.some(function (r) { return r.target === 'type'; });
+    if (!model.filters.length) msgs.push(['err', 'Mindestens eine Filterzeile ist nötig.']);
+    var depth = 0, bad = false; model.filters.forEach(function (r) { depth += (r.lb | 0); depth -= (r.rb | 0); if (depth < 0) bad = true; }); if (depth !== 0 || bad) msgs.push(['err', 'Klammern sind nicht ausgeglichen.']);
+    model.filters.forEach(function (r, i) {
+      if ((r.target === 'value1' || r.target === 'value2') && !hasType) msgs.push(['warn', 'Zeile ' + (i + 1) + ': ' + TDEF[r.target].label.split(' (')[0] + ' ohne Type-Zeile trifft Noten UND Controller.']);
+      if ((r.cond === 207 || r.cond === 209 || r.cond === 206 || r.cond === 208) && parseNum(r.p1, true) > parseNum(r.p2, true)) msgs.push(['warn', 'Zeile ' + (i + 1) + ': Parameter 1 ist größer als Parameter 2.']);
+      if (r.target === 'position' && (parseNum(r.p2) > 1920 || parseNum(r.p1) > 1920)) msgs.push(['warn', 'Zeile ' + (i + 1) + ': Bar Range über 1920 Ticks (ein 4/4-Takt).']);
+      if (C.conditionsInferred[r.cond]) msgs.push(['warn', 'Zeile ' + (i + 1) + ': Bedingung „' + C.conditions[r.cond] + '“ ist aus der Menü-Reihenfolge abgeleitet (🟡), bitte in Cubase prüfen.']);
+      if (r.target === 'type' && C.eventTypesInferred[r.p1]) msgs.push(['warn', 'Zeile ' + (i + 1) + ': Event-Typ-Code 🟡 unverifiziert.']);
+    });
+    if (FUNC_USES_ACTIONS[model.func] && !model.actions.length) msgs.push(['warn', 'Funktion „' + C.functions[model.func] + '“ ohne Aktionszeilen ändert nichts.']);
+    if (!FUNC_USES_ACTIONS[model.func] && model.actions.length) msgs.push(['info', 'Aktionen werden bei „' + C.functions[model.func] + '“ ignoriert.']);
+    if (C.functionsInferred[model.func]) msgs.push(['warn', 'Funktions-Code für „' + C.functions[model.func] + '“ ist 🟡 unverifiziert.']);
+    model.actions.forEach(function (r, i) { if (C.operationsInferred[r.op]) msgs.push(['warn', 'Aktion ' + (i + 1) + ': Operation „' + C.operations[r.op] + '“ ist 🟡 unverifiziert.']); });
+    if (model.kind === 'PLE') msgs.push(['info', 'PLE-Export ist experimentell (Trailer-Flag und Track-Operation-Codes teils unverifiziert).']);
+    $('#msgs').innerHTML = msgs.map(function (m) { return '<li class="' + m[0] + '">' + esc(m[1]) + '</li>'; }).join('');
+    var fname = (model.name || 'Preset').replace(/[\\/:*?"<>|]/g, '_') + '.xml';
+    $('#sizeInfo').textContent = bytes.length + ' Bytes Binärdaten · Dateiname: ' + fname + (/[^\x20-\x7E]/.test(fname) ? ' (bei Umlauten ggf. nach dem Download umbenennen)' : '');
+    if ($('#showHex').checked) { var h = LE.bytesToHex(bytes), lines = []; for (var i = 0; i < h.length; i += 64) lines.push(('0000' + (i / 2).toString(16)).slice(-5) + '  ' + h.substr(i, 64).replace(/(.{8})/g, '$1 ')); $('#hex').textContent = lines.join('\n'); }
+  }
+  function explain(desc) {
+    var s = '<b>Was passiert:</b> Cubase sucht in den ausgewählten ' + (model.kind === 'PLE' ? 'Projektobjekten' : 'MIDI-Parts/Noten') + ' alle Elemente, für die gilt: <i>' + esc(desc.filter) + '</i>. ';
+    var f = model.func;
+    s += {0: 'Diese werden gelöscht.', 1: 'Auf diese wird die Aktionsliste angewendet.', 2: 'Von diesen werden Kopien erzeugt, transformiert und zusätzlich eingefügt.', 3: 'Diese werden transformiert, alle anderen gelöscht.', 4: 'Diese werden transformiert auf eine neue Spur kopiert.', 5: 'Diese werden transformiert auf eine neue Spur verschoben.', 6: 'Diese werden ausgewählt.', 7: 'Diese werden transformiert auf eine neue Lane verschoben.', 8: 'Deren Auswahl wird aufgehoben.'}[f] || '';
+    return s;
+  }
+  function renderAll() { renderHeader(); renderFilters(); renderFunc(); renderActions(); renderPreview(); }
+
+  /* ---------- Events ---------- */
+  function onFieldChange(e) {
+    var t = e.target, i = +t.dataset.i, f = t.dataset.f; if (!f) return;
+    var isAction = t.closest('#actions');
+    var row = isAction ? model.actions[i] : model.filters[i]; if (!row) return;
+    var v = t.value;
+    if (f === 'target' && !isAction) { row.target = v; row.cond = TDEF[v].conds[0]; row.p1 = TDEF[v].p1 === 'text' ? '' : 0; row.p2 = 0; }
+    else if (f === 'target' && isAction) { row.target = +v; row.op = row.target === 4012 ? 331 : 304; row.p1 = 0; row.p2 = 0; }
+    else if (f === 'cond' || f === 'op' || f === 'bool' || f === 'lb' || f === 'rb') row[f] = +v;
+    else if (f === 'p1' && (t.tagName === 'SELECT')) row.p1 = +v;
+    else row[f] = v;
+    // Nur Auswahlfelder lösen ein Neuzeichnen aus; Textfelder behalten den Fokus.
+    if (t.tagName === 'SELECT') { if (isAction) renderActions(); else renderFilters(); }
+    renderPreview();
+  }
+  ['#filters', '#actions'].forEach(function (sel) { $(sel).addEventListener('change', onFieldChange); $(sel).addEventListener('input', function (e) { if (e.target.tagName === 'INPUT') onFieldChange(e); }); });
+  document.body.addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-act]'); if (!b) return;
+    var i = +b.dataset.i, a = b.dataset.act, arr = a[0] === 'a' ? model.actions : model.filters, op = a.replace(/^a/, '');
+    if (op === 'del') arr.splice(i, 1);
+    if (op === 'up' && i > 0) arr.splice(i - 1, 0, arr.splice(i, 1)[0]);
+    if (op === 'down' && i < arr.length - 1) arr.splice(i + 1, 0, arr.splice(i, 1)[0]);
+    renderFilters(); renderActions(); renderPreview();
+  });
+  $('#addFilter').onclick = function () { var t = TARGETS[model.kind][0]; model.filters.push({lb: 0, target: t, cond: TDEF[t].conds[0], p1: 0, p2: 0, rb: 0, bool: 103}); renderFilters(); renderPreview(); };
+  $('#addAction').onclick = function () { var t = ATARGETS[model.kind][0]; model.actions.push({target: t, op: t === 4012 ? 331 : 304, p1: t === 4012 ? 0 : 1, p2: 0}); if (!FUNC_USES_ACTIONS[model.func]) { model.func = 1; renderFunc(); } renderActions(); renderPreview(); };
+  $('#func').onchange = function () { model.func = +this.value; renderFunc(); renderPreview(); };
+  $('#presetName').oninput = function () { model.name = this.value; };
+  $('#comment').oninput = function () { model.comment = this.value; renderPreview(); };
+  document.querySelectorAll('input[name=kind]').forEach(function (r) { r.onchange = function () { if (!this.checked) return; var nk = this.value; if (nk !== model.kind) { var keep = model.name; model = freshModel(); model.kind = nk; model.name = keep; if (nk === 'PLE') { model.filters = [{lb: 0, target: 'container', cond: 200, p1: 1, p2: 0, rb: 0, bool: 103}]; } renderAll(); } }; });
+  $('#btnInit').onclick = function () { model = freshModel(); renderAll(); };
+  $('#showHex').onchange = function () { $('#hex').style.display = this.checked ? 'block' : 'none'; renderPreview(); };
+  $('#btnCopyHex').onclick = function () { if (lastBytes) navigator.clipboard.writeText(LE.bytesToHex(lastBytes)); };
+  $('#btnExport').onclick = function () {
+    var doc = buildDoc(model), bytes = LE.encode(doc), root = model.kind === 'PLE' ? 'Project_Logical_EditorPreset' : 'Logical_EditPreset';
+    var xml = LE.toXml(root, bytes, 1), name = (model.name || 'Preset').replace(/[\\/:*?"<>|]/g, '_') + '.xml';
+    var blob = new Blob([xml], {type: 'application/xml'}), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  };
+  function importText(text, fname) {
+    try {
+      var px = LE.parseXml(text), d = LE.decode(px.bytes), re = LE.encode(d), rt = LE.bytesEqual(re, px.bytes);
+      model = docToModel(d, px.root, (fname || 'Import').replace(/\.xml$/i, ''));
+      renderAll();
+      var raws = model.filters.filter(function (r) { return r.target === 'raw'; }).length + model.actions.filter(function (r) { return r.target === 'raw'; }).length;
+      $('#importInfo').innerHTML = '<span class="ok">Geladen:</span> ' + esc(fname) + ' · ' + px.bytes.length + ' Bytes · Decoder-Round-Trip ' + (rt ? '<span class="ok">byte-identisch</span>' : '<span class="warn">abweichend</span>') + (raws ? ' · <span class="warn">' + raws + ' Zeile(n) als Rohdaten (noch nicht editierbar)</span>' : '') + (d.errors.length ? ' · <span class="err">' + esc(d.errors.join('; ')) + '</span>' : '') + (d.magic !== 0x4000 ? ' · <span class="warn">Legacy-Format (Cubase SX), Export erfolgt im aktuellen Format</span>' : '');
+    } catch (e) { $('#importInfo').innerHTML = '<span class="err">Import fehlgeschlagen: ' + esc(e.message) + '</span>'; }
+  }
+  $('#file').onchange = function () { var f = this.files[0]; if (!f) return; f.text().then(function (t) { importText(t, f.name); }); };
+  var drop = $('#drop');
+  drop.addEventListener('dragover', function (e) { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', function () { drop.classList.remove('over'); });
+  drop.addEventListener('drop', function (e) { e.preventDefault(); drop.classList.remove('over'); var f = e.dataTransfer.files[0]; if (f) f.text().then(function (t) { importText(t, f.name); }); });
+  // Hilfe
+  function showHelp(el) { var k = el && el.dataset ? el.dataset.h || el.id : null; if (!k) return; var txt = HELP[k]; if (k === 'target') { var i = +el.dataset.i, r = model.filters[i]; txt = r ? HELP['target_' + r.target] || HELP.target_type : HELP.target_type; } if (txt) $('#helpBody').textContent = txt; }
+  document.body.addEventListener('focusin', function (e) { showHelp(e.target); });
+  document.body.addEventListener('mouseover', function (e) { var el = e.target.closest('[data-h],#func,#presetName,#comment,#recipes,#btnExport,#file'); if (el) showHelp(el); });
+  document.querySelectorAll('input[name=kind]').forEach(function (r) { r.parentElement.onmouseover = function () { $('#helpBody').textContent = HELP.kind; }; });
+
+  /* ---------- Rezepte ---------- */
+  var RECIPES = [
+    {name: '— Rezept laden —'},
+    {name: 'Velocity +10 (alle Noten)', m: {kind: 'LE', func: 1, filters: [{target: 'type', cond: 200, p1: 0}], actions: [{target: 4003, op: 304, p1: 10}]}},
+    {name: 'Velocity auf 100 setzen', m: {kind: 'LE', func: 1, filters: [{target: 'type', cond: 200, p1: 0}], actions: [{target: 4003, op: 312, p1: 100}]}},
+    {name: 'Velocity komprimieren (÷1.15, +8)', m: {kind: 'LE', func: 1, filters: [{target: 'type', cond: 200, p1: 0}], actions: [{target: 4003, op: 308, p1: 1.15}, {target: 4003, op: 304, p1: 8}]}},
+    {name: 'Velocity zufällig 60–100', m: {kind: 'LE', func: 1, filters: [{target: 'type', cond: 200, p1: 0}], actions: [{target: 4003, op: 310, p1: 60, p2: 100}]}},
+    {name: 'Noten mit Velocity 0–20 auswählen', m: {kind: 'LE', func: 6, filters: [{target: 'type', cond: 200, p1: 0, bool: 103}, {target: 'value2', cond: 207, p1: 0, p2: 20}], actions: []}},
+    {name: 'CC1 (Modulation) löschen', m: {kind: 'LE', func: 0, filters: [{target: 'type', cond: 200, p1: 2, bool: 103}, {target: 'value1', cond: 200, p1: 1}], actions: []}},
+    {name: 'CC1 → CC11 kopieren (Insert)', m: {kind: 'LE', func: 2, filters: [{target: 'type', cond: 200, p1: 2, bool: 103}, {target: 'value1', cond: 200, p1: 1}], actions: [{target: 4002, op: 312, p1: 11}]}},
+    {name: 'Alle Controller löschen', m: {kind: 'LE', func: 0, filters: [{target: 'type', cond: 200, p1: 2, bool: 103}, {target: 'value1', cond: 207, p1: 0, p2: 127}], actions: []}},
+    {name: 'Kick C1 auf neue Spur extrahieren', m: {kind: 'LE', func: 5, filters: [{target: 'type', cond: 200, p1: 0, bool: 103}, {target: 'value1', cond: 200, p1: 36}], actions: []}},
+    {name: 'Downbeat betonen (Eins jedes Takts, Velocity +30)', m: {kind: 'LE', func: 1, filters: [{target: 'type', cond: 200, p1: 0, bool: 103}, {target: 'position', cond: 206, p1: 0, p2: 100}], actions: [{target: 4003, op: 304, p1: 30}]}},
+    {name: 'Noten auf Zwei und Vier auswählen', m: {kind: 'LE', func: 6, filters: [{target: 'type', cond: 200, p1: 0, bool: 103, lb: 0}, {target: 'position', cond: 206, p1: 460, p2: 500, lb: 1, bool: 104}, {target: 'position', cond: 206, p1: 1420, p2: 1460, rb: 1}], actions: []}},
+    {name: 'Ausgewählte Noten eine Oktave höher kopieren', m: {kind: 'LE', func: 2, filters: [{target: 'type', cond: 200, p1: 0, bool: 103}, {target: 'property', cond: 211, p1: 1}], actions: [{target: 4002, op: 304, p1: 12}]}},
+    {name: 'Gemutete Noten löschen', m: {kind: 'LE', func: 0, filters: [{target: 'property', cond: 211, p1: 0}], actions: []}},
+    {name: 'Höchste Note jedes Akkords auswählen', m: {kind: 'LE', func: 6, filters: [{target: 'type', cond: 200, p1: 0, bool: 103}, {target: 'context', cond: 203, p1: 15, p2: 3}], actions: []}},
+    {name: 'Alt-Stimme extrahieren (Voice = 1)', m: {kind: 'LE', func: 5, filters: [{target: 'type', cond: 200, p1: 0, bool: 103}, {target: 'context', cond: 200, p1: 14, p2: 1}], actions: []}},
+    {name: 'PLE: Alle Folder öffnen', m: {kind: 'PLE', func: 1, filters: [{target: 'container', cond: 200, p1: 0}], actions: [{target: 4012, op: 331, p1: 0}]}},
+    {name: 'PLE: Alle sichtbaren Folder öffnen (Factory-Stil)', m: {kind: 'PLE', func: 1, filters: [{target: 'container', cond: 200, p1: 0, bool: 103}, {target: 'property', cond: 212, p1: 5}], actions: [{target: 4012, op: 331, p1: 0}]}},
+    {name: 'PLE: Spuren mit „Perc“ im Namen auswählen', m: {kind: 'PLE', func: 6, filters: [{target: 'container', cond: 200, p1: 1, bool: 103}, {target: 'name', cond: 210, p1: 'Perc'}], actions: []}}
+  ];
+  $('#recipes').innerHTML = RECIPES.map(function (r, i) { return opt(i, r.name, 0); }).join('');
+  $('#recipes').onchange = function () {
+    var r = RECIPES[+this.value]; if (!r || !r.m) return;
+    model = freshModel(); model.kind = r.m.kind; model.func = r.m.func; model.name = r.name.replace(/^PLE: /, '').replace(/[\\/:*?"<>|]/g, '_');
+    model.filters = r.m.filters.map(function (f) { return {lb: f.lb || 0, rb: f.rb || 0, bool: f.bool || 103, target: f.target, cond: f.cond, p1: f.p1 == null ? 0 : f.p1, p2: f.p2 == null ? 0 : f.p2}; });
+    model.actions = r.m.actions.map(function (a) { return {target: a.target, op: a.op, p1: a.p1 == null ? 0 : a.p1, p2: a.p2 == null ? 0 : a.p2}; });
+    renderAll(); this.value = 0;
+  };
+
+  renderAll();
+})();
+</script>
+</body>
+</html>

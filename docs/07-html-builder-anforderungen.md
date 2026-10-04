@@ -1,5 +1,10 @@
 # 07 – Anforderungen & Architektur: monolithischer HTML-Preset-Builder
 
+> **Stand:** `le-tamer.html` setzt die Muss-Funktionen 1–7 um (PLE experimentell). Encoder/Decoder liegen im
+> `<script id="le-core">`-Block und werden von `tools/roundtrip-test.mjs` ohne Browser getestet
+> (331/331 Dateien byte-identisch; neu erzeugte Presets identisch mit Cubase-13-Factory-Dateien).
+> Offen: Ladetest in Cubase 15, fehlende Codes (siehe `06-preset-dateiformat.md`, Kapitel 11).
+
 ## Ziel
 Eine **einzelne HTML-Datei** (kein Build, kein Server, offline nutzbar), mit der sich Presets für Logical Editor und
 Project Logical Editor **verständlich zusammenklicken**, erklären, prüfen und als Cubase-kompatible `.xml` speichern lassen.

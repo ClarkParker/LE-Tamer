@@ -6,6 +6,19 @@ mit der sich Presets komfortabel bauen, verstehen und als `.xml` für Cubase exp
 
 ## Status
 
+Phase 2 – **HTML-Preset-Builder** – erster lauffähiger Stand (`le-tamer.html`, eine Datei, offline):
+
+* Filter-/Aktionszeilen wie in Cubase, kontextsensitive Hilfe, Klartext-Vorschau, Validierung, Rezept-Bibliothek.
+* **Export** als Cubase-`.xml`; **Import** bestehender Presets per Drag & Drop (unbekannte Zeilen bleiben als Rohdaten
+  erhalten und werden unverändert zurückgeschrieben).
+* Der Encoder ist gegen echte Dateien geprüft: Decode→Encode ist für **331/331 Presets byte-identisch**
+  (`node tools/roundtrip-test.mjs`), und aus dem Modell neu erzeugte Presets sind **byte-identisch** mit dem, was
+  Cubase 13 für die gleichen Einstellungen geschrieben hat (Factory-Presets *Extract Alto*, *Select Highest Velocity*,
+  *Add Ninths to Chords*).
+* Noch nicht im Builder: Channel/Length/Last-Event-Ziele, Position mit Zeitwerten (Cursor, Cycle, Sekunden), Name-/Farb-Aktionen,
+  Pre-/Post-Commands. Dafür fehlen verifizierte Codes – je ein in Cubase 15 gespeichertes Mini-Preset genügt zum Nachziehen.
+* **Noch offen: der erste Ladetest in Cubase 15 selbst.**
+
 Phase 1 – **Wissen aufbauen** – ist abgeschlossen:
 
 * Die komplette Cubase-15-Dokumentation zu allen „logischen“ Werkzeugen wurde ausgewertet und als
@@ -16,12 +29,12 @@ Phase 1 – **Wissen aufbauen** – ist abgeschlossen:
   in `data/le-codes.json`.
 * Offene Punkte und Unsicherheiten sind in `docs/06-preset-dateiformat.md` explizit markiert.
 
-Phase 2 – **HTML-Preset-Builder** – ist geplant; die Anforderungen stehen in `docs/07-html-builder-anforderungen.md`.
-
 ## Inhalt
 
 | Pfad | Inhalt |
 |------|--------|
+| `le-tamer.html` | **Der Preset-Builder** – im Browser öffnen, fertig |
+| `tools/roundtrip-test.mjs` | Round-Trip-Test des HTML-Encoders gegen echte Preset-Dateien (Node ≥ 20) |
 | `docs/01-ueberblick.md` | Die fünf logischen Werkzeuge in Cubase 15, Editionen, Menüpfade, Unterschiede |
 | `docs/02-logical-editor-referenz.md` | Logical Editor: Filterziele, Bedingungen, Funktionen, Aktionsziele, Operationen |
 | `docs/03-project-logical-editor-referenz.md` | Project Logical Editor: Filterziele, Bedingungen, Funktionen, Aktionen, Pre/Post-Befehle |
@@ -33,6 +46,19 @@ Phase 2 – **HTML-Preset-Builder** – ist geplant; die Anforderungen stehen in
 | `tools/leparse.py` | Parser/Decoder für Preset-XML (Zusammenfassung, JSON, Baumansicht) |
 | `data/le-codes.json` | Abgeleitete Enum-Codes mit Konfidenz-Angabe |
 | `samples/` | Kleine Beispiel-Presets zum Testen des Parsers |
+
+## Schnellstart Builder
+
+1. `le-tamer.html` im Browser öffnen (Doppelklick, kein Server nötig).
+2. Rezept wählen oder Zeilen anlegen, Vorschau und Warnungen prüfen.
+3. „Als .xml speichern“ → Datei in den angezeigten User-Preset-Ordner kopieren
+   (Windows: `Dokumente\Steinberg\Cubase 15\User Presets\Logical Edit\`).
+4. In Cubase den Preset-Browser öffnen – das Preset erscheint unter *User Presets*.
+
+Testen ohne Cubase:
+```bash
+node tools/roundtrip-test.mjs "<Ordner mit Preset-XMLs>"   # Decode→Encode muss byte-identisch sein
+```
 
 ## Schnellstart Parser
 

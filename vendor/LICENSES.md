@@ -7,3 +7,7 @@
 | `bootstrap-3.4.1.min.css` | Bootstrap (Twitter, Inc.) | 3.4.1 | MIT |
 
 Die Dateien werden von `tools/build-poc.py` unverändert in `prototype/poc-querybuilder.html` eingebettet.
+| `vue-3.5.13.global.prod.js` | Vue.js (Evan You) | 3.5.13 | MIT (`LICENSE-vue.txt`) |
+| `sortablejs-1.15.6.min.js` | SortableJS (Lebedev Konstantin) | 1.15.6 | MIT (`LICENSE-sortablejs.txt`) |
+
+Vue und SortableJS werden von `tools/build-studio.py` in `le-tamer-studio.html` eingebettet.

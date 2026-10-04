@@ -419,3 +419,11 @@ bestätigen, dass Cubase-13-Dateien in 14 laufen; Metagrid-Presets aus Cubase 9 
    PMidiNoteValue/PControllerValue/PVelocityValue); für Operationen ohne Cubase-13-Beleg (Multiply/Divide/Random auf Main Value)
    die bis Cubase 12 übliche Schreibweise, die Cubase 13–15 nachweislich liest. Beide Stile sind im Builder wählbar.
 3. Strings als `Text\0` ohne Pufferreste; Kommentar optional.
+4. Der Core liest den Befehlsnamen-String am Trailer-Anfang (`u32 strLen + Bytes`) jetzt explizit (`decode().cmd`) und schreibt
+   ihn zurück; Dateien aus Cubase 11 mit gesetztem Namen werden dadurch korrekt interpretiert (Funktion, isPLE).
+5. Beim Zurückschreiben importierter Objekte übernimmt der Writer die Basisklassen-Kette der Datei, deklariert aber nie eine
+   bereits registrierte Klasse ein zweites Mal – so bleiben Zeilen beim Umsortieren/Ergänzen gültig und unveränderte Dateien
+   byteidentisch (Korpus: 1379/1379 Round-Trip; Studio-Import→Export 1275/1379 identisch bzw. nur Trailer-Version).
+6. `LeTTimeDiffValue` (44 Byte) für neue Werte: `u32 0, u32 0, u32 kind, f64 Einheit[s], f64 Wert, u32 kind, f64 Einheit,
+   u32 floor(Wert·Einheit)`; kind 1 Sekunden (Wert als float32 gerundet), 2/5 Frames@24/30, 10 Samples@48 kHz – byteidentisch mit
+   drei Korpus-Dateien nachgebaut (0,05 s; 1 s; 256 Samples). Die PPQ-Variante (kind 0) trägt zusätzliche Felder und bleibt offen.

@@ -294,3 +294,57 @@ Cubase 9–15 lädt diese Dateien weiterhin; ein Writer sollte **nur das aktuell
 6. Verifikation, dass Cubase Dateien **ohne** äußeres Klammerpaar und mit frei gewählten (aber korrekten) Offsets lädt
    (Round-Trip-Test: Datei im Builder erzeugen → in Cubase laden → speichern → byteweise vergleichen).
 7. Input-Transformer-Preset-Format (Wurzelelement, Modul-Struktur).
+
+## 12. Nachtrag: Zeitwert-Objekte (`LeTTimeValue`, `LeTTimeDiffValue`)
+
+Analyse an 46 Factory-PLE-Presets (Upload), 20 Presets von r-koubou und den Metagrid-Dateien.
+
+### LeTTimeDiffValue (Differenzen: Position Add/Subtract, Length-Vergleiche)
+```
+u32 0, u32 0, u32 kind
+kind 0  = Ticks/PPQ: danach eingebettete Tempo-/Taktart-Objekte (s. u.) und zuletzt u32 ticks (z. B. 664, 963) – 220…498 B
+kind 1  = Sekunden:  f64 1.0, f64 sekunden, u32 1, f64 1.0, u32 0                      – 44 B (z. B. 0.05 = 50 ms)
+kind 2  = Frames@24: f64 1/24, f64 frames, u32 2, f64 1/24, u32 0                        – 44 B
+kind 5  = Frames@30: f64 1/30, f64 frames, u32 5, f64 1/30, u32 0                        – 44 B ("Shift events by 2 frames")
+```
+`kind` kodiert also die Zeitbasis inklusive Framerate; der Doppelwert davor ist die Dauer einer Einheit in Sekunden.
+Die Zeitbasis der Aktion steht zusätzlich als `LeDomainTypeValue` in Parameter 2 (0 Bars/Beats, 1 Sekunden, 3 Frames).
+
+### LeTTimeValue (absolute Positionen: Before/Beyond Cursor, Inside Cycle, Exactly Matching Cycle, Position Bigger …)
+```
+u32 0, u32 0, u32 1
+f64 1.0, f64 31536000.0 (= 365 Tage in Sekunden, Obergrenze), u32 1, f64 1.0, u32 0, u32 0, u32 0
+[FE MTrackEvent v2] [FE MEvent v1] [FE CmIDLink v0] [FF MTempoTrackEvent v2] size=36 … (Tempo, z. B. f64 120.0)
+[FF MSignatureTrackEvent v2] size=24 … (u16 4, u16 4 = 4/4)
+… bei Parameter 1 der Cursor-Bedingungen folgt der komplette Tempo-Track des Projekts zum Speicherzeitpunkt (bis 2380 B)
+```
+Parameter 2 ist bei diesen Bedingungen ein ungenutzter 60-Byte-Standardwert (`0,0,1, 1.0, 31536000.0, 0,0,0`, zwei u32).
+
+**Konsequenz für den Builder:** Bei Cursor-/Cycle-/Loop-/Marker-Bedingungen ist der *Wert* irrelevant (Cubase
+vergleicht mit der Live-Position). Es genügt, die 236-/60-Byte-Blöcke eines Factory-Presets als Vorlage byteweise
+zu übernehmen – der Encoder behandelt sie als Rohdaten, Klassenreferenzen bleiben gültig, weil die Blöcke nur intern
+definierte Klassen enthalten. Damit sind diese Bedingungen ohne vollständige Dekodierung exakt reproduzierbar.
+Nur echte Zeit-*Werte* (Position Equal 5.1.1.0, Length < 200 Samples) erfordern weitere Analyse der Tick-Felder.
+
+### Weitere im Nachtrag verifizierte Klassen
+| Klasse | Bedeutung | Layout |
+|---|---|---|
+| `leLengthTarget` | Filter **Length** | wie andere Bedingungen; P1/P2 `LeUIntValue(0..MAXINT)` in Ticks oder `LeTTimeDiffValue` |
+| `leMediaTypeTarget` + `LeMediaTypeValue` (4 B) | Filter **Media Type** (PLE) | Werte: 0 Audio, 1 MIDI, 2 Automation, 7 Signature, 8 Chord (Reihenfolge wie Menü → 3 Marker, 4 Transpose, 5 Arranger, 6 Tempo, 9 Scale, 10 Video, 11 Group, 12 Effect, 13 Device, 14 VCA) |
+| `leColorTypeTarget` | Filter **Color Name** (PLE) | `100, cond, 0, UStringValue, u32 0` – **kein** P2-Objekt |
+| `PMidiNoteValue` (12 B) | Pitch-Wert bei Subtype mit Type = Note | `min 0, max 127, value` wie LeUIntValue |
+| `leActionTargetTypes` | Aktion **Type** = 4006 | `u16 0, op, 4006, LeTypeValue, LeUIntValue, u32 0` (Null-Wort wie leTypesTarget) |
+| `leActionTargetName` | Aktion **Name** = 4007 (PLE) | P1 `UStringValue`; 327 Append (P2 LeUIntValue = Std.-Name-Index), 329 Generate Name (P2 LeUIntValue Startnummer), 330 Replace Search String (P2 UStringValue) |
+| `leActionTargetTrim` | Aktion **Trim** = 4013 (PLE) | 307 Multiply by, P1 `LeUFloatValue(-100..100)` |
+| `leActionTargetColor` | Aktion **Set Color** = 4014 (PLE) | 312 Set to Fixed, P1 `UStringValue("Color 8")`, P2 `UFloatValue` |
+| `leActionTargetNXPOp` | Aktion **NoteExp Operation** = 4016 | op 355 = Remove NoteExp; P1/P2 `LeUIntValue(0..1)` |
+| `LeGenericOpValue` | Track-Operation-Modus | 0 Enable/Open/Hide ✅, 1 Disable/Close/Unmute ✅, 2 Toggle ✅ |
+
+Korrekturen gegenüber Kapitel 6/7: **220 = Exactly Matching Cycle** (nicht Inside Track Loop), **311 = Set Relative
+Random Values Between** (nicht 313), **309 = Round by** ✅, **202 Bigger / 204 Less / 205 Less or Equal / 208 Outside
+Bar Range / 217 Beyond Cursor** ✅. Track-Ops verifiziert: 331 Folder, 335 Mute, 340 Inserts Bypass, 342 Lanes Active,
+343 Hide Track. Funktion **Deselect = 8** ✅ (night.xml, Cubase 12). PLE-Trailer aus Cubase 12: `[0, fn, 1, 0, 0x1100, 0, 0]`
+– Wort 5 ist versionsabhängig (ältere Dateien 0).
+
+**Zum BOM-Anhang bei Strings:** In 28 von 29 Factory-Kommentaren fehlt er, in 1 ist er da; bei `UStringValue` 3 von 13.
+Es handelt sich um zufällige Pufferreste nach dem NUL, nicht um Format. Lesen bis NUL, schreiben als `Text\0` ist korrekt.

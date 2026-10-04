@@ -109,24 +109,26 @@ var LE = (function () {
   var CODES = {
     tokens: {101:'(',102:')',103:'And',104:'Or'},
     functions: {0:'Delete',1:'Transform',2:'Insert',3:'Insert Exclusive',4:'Copy',5:'Extract to Track',6:'Select',7:'Extract to Lanes',8:'Deselect'},
-    functionsInferred: {3:1,7:1,8:1},
-    conditions: {200:'Equal',201:'Unequal',202:'Bigger',203:'Bigger or Equal',204:'Less',205:'Less or Equal',206:'Inside Bar Range',207:'Inside Range',208:'Outside Bar Range',209:'Outside Range',210:'Contains',211:'Property is Set',212:'Property is Not Set',213:'Contains Not',216:'Before Cursor',217:'Beyond Cursor',218:'Inside Cycle',219:'Outside Cycle',220:'Inside Track Loop',221:'Exactly Matching Cycle',222:'Inside Selected Marker'},
-    conditionsInferred: {202:1,203:1,204:1,205:1,208:1,213:1,219:1,220:1,221:1,222:1},
-    operations: {221:'(keine)',304:'Add',306:'Subtract',307:'Multiply by',308:'Divide by',309:'Round by',310:'Set Random Values Between',312:'Set to Fixed Value',313:'Set Relative Random Values Between',331:'Folder',332:'Record',333:'Monitor',334:'Solo',335:'Mute',336:'Read',337:'Write',338:'EQ Bypass',339:'Inserts Bypass',340:'Sends Bypass',341:'Enable Send Slot by Number',342:'Enable Insert Slot by Number',343:'Hide Track'},
-    operationsInferred: {309:1,313:1,332:1,333:1,334:1,335:1,336:1,337:1,338:1,339:1,340:1,341:1,342:1,343:1},
-    actionTargets: {4000:'Position',4001:'Length',4002:'Subtype (Value 1)',4003:'Main Value (Value 2)',4012:'Track Operation'},
-    filterTargets: {leTypesTarget:'Type',leValue1Target:'Subtype (Value 1)',leValue2Target:'Main Value (Value 2)',lePositionTarget:'Position',leFlagsTarget:'Property',leContextTypeTarget:'Context Variable',leContainerTypeTarget:'Container Type',leNameTypeTarget:'Name'},
+    functionsInferred: {3:1,7:1},
+    conditions: {200:'Equal',201:'Unequal',202:'Bigger',203:'Bigger or Equal',204:'Less',205:'Less or Equal',206:'Inside Bar Range',207:'Inside Range',208:'Outside Bar Range',209:'Outside Range',210:'Contains',211:'Property is Set',212:'Property is Not Set',213:'Contains Not',216:'Before Cursor',217:'Beyond Cursor',218:'Inside Cycle',219:'Outside Cycle',220:'Exactly Matching Cycle',221:'Inside Track Loop',222:'Inside Selected Marker'},
+    conditionsInferred: {203:1,213:1,219:1,221:1,222:1},
+    operations: {221:'(keine)',304:'Add',306:'Subtract',307:'Multiply by',308:'Divide by',309:'Round by',310:'Set Random Values Between',311:'Set Relative Random Values Between',312:'Set to Fixed Value',327:'Append',329:'Generate Name',330:'Replace Search String',331:'Folder',332:'Record',333:'Monitor',334:'Solo',335:'Mute',336:'Read',337:'Write',338:'EQ Bypass',339:'(unbekannt 339)',340:'Inserts Bypass',341:'Sends Bypass',342:'Lanes Active',343:'Hide Track',355:'Remove NoteExp'},
+    operationsInferred: {332:1,333:1,334:1,336:1,337:1,338:1,339:1,341:1},
+    actionTargets: {4000:'Position',4001:'Length',4002:'Subtype (Value 1)',4003:'Main Value (Value 2)',4006:'Type',4007:'Name',4012:'Track Operation',4013:'Trim',4014:'Set Color',4016:'NoteExp Operation'},
+    filterTargets: {leTypesTarget:'Type',leValue1Target:'Subtype (Value 1)',leValue2Target:'Main Value (Value 2)',lePositionTarget:'Position',leLengthTarget:'Length',leFlagsTarget:'Property',leContextTypeTarget:'Context Variable',leContainerTypeTarget:'Container Type',leMediaTypeTarget:'Media Type',leNameTypeTarget:'Name',leColorTypeTarget:'Color Name'},
+    mediaTypes: ['Audio','MIDI','Automation','Marker','Transpose','Arranger','Tempo','Signature','Chord','Scale Event','Video','Group','Effect','Device','VCA'],
+    mediaTypesInferred: {3:1,4:1,5:1,6:1,9:1,10:1,11:1,12:1,13:1,14:1},
     eventTypes: ['Note','Poly Pressure','Controller','Program Change','Aftertouch','Pitchbend','VST 3 Event','SysEx','SMF Event'],
     eventTypesInferred: {1:1,3:1,6:1,7:1,8:1},
     properties: ['Muted','Selected','Empty','Inside NoteExp','Is valid VST 3','Hidden','Has Track Version','Follows Chord Track','Is Disabled','Parent Object Is Selected'],
-    propertiesInferred: {2:1,3:1,4:1,6:1,7:1,8:1,9:1},
+    propertiesInferred: {4:1,8:1,9:1},
     contextVars: ['Highest Pitch','Lowest Pitch','Average Pitch','Highest Velocity','Lowest Velocity','Average Velocity','Highest CC Value','Lowest CC Value','Average CC Value','No. of Notes in Chord (Part)','No. of Voices (Part)','Position in Chord (Part)','Note Number in Chord (lowest = 0)','Position in Chord (Chord Track)','Voice','Highest in Chord from at Least n Notes','Lowest in Chord from at Least n Notes'],
     contextVarsInferred: {1:1,2:1,4:1,5:1,6:1,7:1,8:1,9:1,10:1,11:1,12:1,15:1,16:1},
     contextVarsNeedP2: {9:1,10:1,11:1,12:1,13:1,14:1,15:1,16:1},
     containerTypes: ['Folder Track','Track','Part','Event'],
-    containerTypesInferred: {1:1,2:1,3:1},
+    containerTypesInferred: {},
     genericOp: ['Enable / Open','Disable / Close','Toggle'],
-    genericOpInferred: {1:1,2:1}
+    genericOpInferred: {}
   };
   // Basisklassen-Ketten (direkte Basis zuerst, Wurzel zuletzt) – beobachtet in Cubase 9/13-Dateien.
   var CHAINS = {
@@ -135,7 +137,9 @@ var LE = (function () {
     LeUIntValue:['UIntValue','UValue'], LeTypeValue:['UIntValue','UValue'], LeGenericOpValue:['UIntValue','UValue'],
     LeContainerTypeValue:['UIntValue','UValue'], LeDomainTypeValue:['UIntValue','UValue'],
     LeFlagsValue:['LeUIntValue','UIntValue','UValue'], PControllerValue:['LeUIntValue','UIntValue','UValue'],
-    LeUFloatValue:['UFloatValue','UValue'], UStringValue:['UValue']
+    LeUFloatValue:['UFloatValue','UValue'], UStringValue:['UValue'],
+    LeMediaTypeValue:['UIntValue','UValue'], PMidiNoteValue:['LeUIntValue','UIntValue','UValue'],
+    LeTTimeValue:['TTimeValue','TTimeValueBase','UValue'], LeTTimeDiffValue:['TDiffTimeValue','TTimeValueBase','UValue']
   };
   function chainFor(cls) {
     if (CHAINS[cls]) return CHAINS[cls];
@@ -143,8 +147,8 @@ var LE = (function () {
     if (cls.indexOf('le') === 0 && /Target$/.test(cls)) return ['leConditionTarget', 'leToken', 'CmObject'];
     return [];
   }
-  var VALUE12 = {LeUIntValue:1, PControllerValue:1, LeFlagsValue:1, LeTypeValue:1, LeUFloatValue:1};
-  var VALUE4 = {LeContainerTypeValue:1, LeDomainTypeValue:1, LeGenericOpValue:1, UIntValue:1, UFloatValue:1};
+  var VALUE12 = {LeUIntValue:1, PControllerValue:1, LeFlagsValue:1, LeTypeValue:1, LeUFloatValue:1, PMidiNoteValue:1};
+  var VALUE4 = {LeContainerTypeValue:1, LeDomainTypeValue:1, LeGenericOpValue:1, LeMediaTypeValue:1, UIntValue:1, UFloatValue:1};
   var FLOATCLS = {LeUFloatValue:1, UFloatValue:1};
 
   /* ---------- Hilfsfunktionen ---------- */
@@ -292,6 +296,11 @@ var LE = (function () {
     context: function (c, p1, p2) { return cond('leContextTypeTarget', c, [p1, p2 || 0]); },
     container: function (c, t) { return cond('leContainerTypeTarget', c, [v4('LeContainerTypeValue', t), v12('LeUIntValue', 0, 255, 0)]); },
     name: function (c, text) { return cond('leNameTypeTarget', c, [{cls: 'UStringValue', type: 'str', str: text}, v12('LeUIntValue', 0, 255, 0)]); },
+    length: function (c, p1, p2) { return cond('leLengthTarget', c, [v12('LeUIntValue', 0, MAXINT, p1), v12('LeUIntValue', 0, MAXINT, p2 || 0)]); },
+    media: function (c, t) { return cond('leMediaTypeTarget', c, [v4('LeMediaTypeValue', t), v12('LeUIntValue', 0, 255, 0)]); },
+    color: function (c, text) { return cond('leColorTypeTarget', c, [{cls: 'UStringValue', type: 'str', str: text}, 0]); },
+    positionTime: function (c, tpl) { return cond('lePositionTarget', c, [{cls: tpl.p1.cls, type: 'raw', raw: hexToBytes(tpl.p1.hex)}, {cls: tpl.p2.cls, type: 'raw', raw: hexToBytes(tpl.p2.hex)}]); },
+    actType: function (op, t) { return {cls: 'leActionTargetTypes', type: 'action', flags16: 0, op: op, target: 4006, items: [v12('LeTypeValue', 0, 8, t), v12('LeUIntValue', 0, MAXINT, 0), 0]}; },
     actInt: function (target, op, p1, p2) { var cls = target === 4002 ? 'leActionTargetValue1' : 'leActionTargetValue2'; return action(cls, target, op, v12('LeUIntValue', 0, 127, p1), v12('LeUIntValue', 0, 127, p2 || 0)); },
     actFloat: function (target, op, p1) { var cls = target === 4002 ? 'leActionTargetValue1' : 'leActionTargetValue2'; return action(cls, target, op, v12('LeUFloatValue', 0, 127, p1), v12('LeUFloatValue', 0, 127, 0)); },
     trackOp: function (op, mode) { return action('leActionTargetTrackOp', 4012, op, v4('LeGenericOpValue', mode), v12('LeUIntValue', 0, 1, 0)); }
@@ -315,6 +324,7 @@ var LE = (function () {
     if (o.cls === 'leTypesTarget' && params[0]) { p1 = CODES.eventTypes[params[0].value] || p1; if (params[0].value === 0) ctx.note = true; if (params[0].value === 2) ctx.cc = true; }
     if (o.cls === 'leFlagsTarget' && params[0]) p1 = CODES.properties[params[0].value] || p1;
     if (o.cls === 'leContainerTypeTarget' && params[0]) p1 = CODES.containerTypes[params[0].value] || p1;
+    if (o.cls === 'leMediaTypeTarget' && params[0]) p1 = CODES.mediaTypes[params[0].value] || p1;
     if (o.cls === 'leValue1Target' && ctx.note && params[0]) { tgt = 'Pitch'; p1 = noteName(params[0].value) + ' (' + params[0].value + ')'; if (params[1]) p2 = noteName(params[1].value) + ' (' + params[1].value + ')'; }
     if (o.cls === 'leValue1Target' && ctx.cc) tgt = 'CC-Nummer';
     if (o.cls === 'leValue2Target' && ctx.note) tgt = 'Velocity';

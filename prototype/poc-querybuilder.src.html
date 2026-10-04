@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LE-Tamer PoC – QueryBuilder</title>
+<style><!--INLINE:vendor/bootstrap-3.4.1.min.css--></style>
+<style><!--INLINE:vendor/query-builder-2.7.0.default.min.css--></style>
+<style>
+body{background:#f4f5f7;padding:14px 18px;font-size:13px}
+h1{font-size:20px;margin:0 0 10px}
+.panel{margin-bottom:12px}
+.panel-heading{font-weight:600}
+#preview{font-family:Menlo,Consolas,monospace;white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:4px;padding:8px}
+.msgs li.warn{color:#b26a00}.msgs li.err{color:#c0392b}.msgs li.ok{color:#2e7d32}
+table.actions td{padding:3px}
+.toolbar .form-group{margin-right:10px}
+.query-builder .rule-value-container .form-control{min-width:70px}
+.inferred{color:#b26a00}
+</style>
+</head>
+<body>
+<h1>LE-Tamer · Proof-of-Concept mit jQuery QueryBuilder <small>(Filter-Editor als Regelbaum, Export über den LE-Tamer-Core)</small></h1>
+<form class="form-inline toolbar" onsubmit="return false">
+  <div class="form-group"><label class="radio-inline"><input type="radio" name="kind" value="LE" checked> Logical Editor</label> <label class="radio-inline"><input type="radio" name="kind" value="PLE"> Project Logical Editor</label></div>
+  <div class="form-group"><label>Preset-Name <input class="form-control input-sm" id="presetName" value="PoC Preset" style="width:220px"></label></div>
+  <div class="form-group"><label>Funktion <select class="form-control input-sm" id="func"></select></label></div>
+  <div class="form-group"><label>Rezept <select class="form-control input-sm" id="recipes"></select></label></div>
+  <button class="btn btn-primary btn-sm" id="btnExport">⬇ Als .xml speichern</button>
+  <label class="btn btn-default btn-sm">Import … <input type="file" id="file" accept=".xml" style="display:none"></label>
+</form>
+<div class="panel panel-default"><div class="panel-heading">Event Target Filters</div><div class="panel-body"><div id="builder"></div></div></div>
+<div class="panel panel-default"><div class="panel-heading">Event Transform Actions</div><div class="panel-body">
+  <table class="actions"><thead><tr><th>Action Target</th><th>Operation</th><th>Parameter 1</th><th>Parameter 2</th><th></th></tr></thead><tbody id="actions"></tbody></table>
+  <button class="btn btn-default btn-sm" id="addAction">+ Aktionszeile</button>
+</div></div>
+<div class="panel panel-default"><div class="panel-heading">Vorschau</div><div class="panel-body"><div id="preview"></div><ul class="msgs" id="msgs"></ul><div id="importInfo" class="text-muted"></div></div></div>
+
+<script><!--INLINE:vendor/jquery-3.7.1.min.js--></script>
+<script><!--INLINE:vendor/query-builder-2.7.0.standalone.min.js--></script>
+<script><!--INLINE:vendor/query-builder-2.7.0.de.js--></script>
+<script><!--INLINE:le-core--></script>
+<script>var TIME_TPL = <!--INLINE-JSON:data/time-templates.json-->;</script>
+<script>
+(function ($) {
+  'use strict';
+  var C = LE.CODES, M = LE.make;
+  function sel(arr, inferred) { var o = {}; arr.forEach(function (n, i) { o[i] = n + (inferred && inferred[i] ? ' 🟡' : ''); }); return o; }
+  var NUMOPS = ['equal', 'not_equal', 'greater', 'greater_or_equal', 'less', 'less_or_equal', 'between', 'not_between'];
+  var OPCODE = {equal: 200, not_equal: 201, greater: 202, greater_or_equal: 203, less: 204, less_or_equal: 205, between: 207, not_between: 209, contains: 210, not_contains: 213, is_set: 211, is_not_set: 212, before_cursor: 216, beyond_cursor: 217, inside_cycle: 218, outside_cycle: 219, exactly_cycle: 220, inside_track_loop: 221, inside_marker: 222};
+  var CODEOP = {}; Object.keys(OPCODE).forEach(function (k) { CODEOP[OPCODE[k]] = k; });
+  var noteRe = /^([A-Ha-h])([#b]?)(-?\d+)$/;
+  function parseVal(v) { if (typeof v === 'number') return v; v = String(v == null ? '' : v).trim(); var m = noteRe.exec(v); if (m) { var N = {C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11, H: 11}; return N[m[1].toUpperCase()] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + (parseInt(m[3], 10) + 2) * 12; } var f = parseFloat(v.replace(',', '.')); return isNaN(f) ? 0 : f; }
+  function noteOrInt(value) { var n = parseVal(value); return (n >= 0 && n <= 127) ? true : 'Wert 0–127 oder Notenname (C3 = 60)'; }
+
+  var FILTERS = {
+    LE: [
+      {id: 'type', label: 'Type', type: 'integer', input: 'select', values: sel(C.eventTypes, C.eventTypesInferred), operators: ['equal', 'not_equal']},
+      {id: 'value1', label: 'Subtype (Pitch / CC-Nr.)', type: 'string', operators: NUMOPS, validation: {callback: noteOrInt}, placeholder: '0–127 oder C3'},
+      {id: 'value2', label: 'Main Value (Velocity / CC-Wert)', type: 'integer', operators: NUMOPS, validation: {min: 0, max: 127}},
+      {id: 'length', label: 'Length (Ticks, 480/Viertel)', type: 'integer', operators: NUMOPS, validation: {min: 0}},
+      {id: 'position_bar', label: 'Position – Bar Range (Ticks im Takt)', type: 'integer', operators: ['between', 'not_between'], validation: {min: 0, max: 1920}},
+      {id: 'position_time', label: 'Position – Cursor / Cycle', type: 'string', input: 'select', values: {x: '–'}, operators: ['before_cursor', 'beyond_cursor', 'inside_cycle', 'outside_cycle', 'exactly_cycle', 'inside_track_loop', 'inside_marker']},
+      {id: 'property', label: 'Property', type: 'integer', input: 'select', values: sel(C.properties, C.propertiesInferred), operators: ['is_set', 'is_not_set']},
+      {id: 'context', label: 'Context Variable', type: 'string', operators: ['equal', 'not_equal', 'greater', 'greater_or_equal', 'less', 'less_or_equal'],
+        input: function (rule, name) { var h = '<select class="form-control input-sm" name="' + name + '_v">'; C.contextVars.forEach(function (n, i) { h += '<option value="' + i + '">' + n + (C.contextVarsInferred[i] ? ' 🟡' : '') + '</option>'; }); h += '</select> <input class="form-control input-sm" name="' + name + '_p2" type="number" placeholder="Param 2" style="width:90px">'; return h; },
+        valueGetter: function (rule) { var $c = rule.$el.find('.rule-value-container'); return $c.find('[name$=_v]').val() + '|' + ($c.find('[name$=_p2]').val() || 0); },
+        valueSetter: function (rule, value) { var p = String(value || '0|0').split('|'), $c = rule.$el.find('.rule-value-container'); $c.find('[name$=_v]').val(p[0]); $c.find('[name$=_p2]').val(p[1] || 0); }}
+    ],
+    PLE: [
+      {id: 'container', label: 'Container Type', type: 'integer', input: 'select', values: sel(C.containerTypes), operators: ['equal', 'not_equal']},
+      {id: 'media', label: 'Media Type', type: 'integer', input: 'select', values: sel(C.mediaTypes, C.mediaTypesInferred), operators: ['equal', 'not_equal']},
+      {id: 'name', label: 'Name', type: 'string', operators: ['equal', 'contains', 'not_contains']},
+      {id: 'color', label: 'Color Name', type: 'string', operators: ['equal', 'contains', 'not_contains']},
+      {id: 'property', label: 'Property', type: 'integer', input: 'select', values: sel(C.properties, C.propertiesInferred), operators: ['is_set', 'is_not_set']},
+      {id: 'length', label: 'Length (Ticks)', type: 'integer', operators: NUMOPS, validation: {min: 0}},
+      {id: 'position_bar', label: 'Position – Bar Range (Ticks im Takt)', type: 'integer', operators: ['between', 'not_between'], validation: {min: 0, max: 1920}},
+      {id: 'position_time', label: 'Position – Cursor / Cycle', type: 'string', input: 'select', values: {x: '–'}, operators: ['before_cursor', 'beyond_cursor', 'inside_cycle', 'outside_cycle', 'exactly_cycle', 'inside_track_loop', 'inside_marker']}
+    ]
+  };
+  var EXTRA_OPS = [
+    {type: 'is_set', nb_inputs: 1, multiple: false, apply_to: ['number']}, {type: 'is_not_set', nb_inputs: 1, multiple: false, apply_to: ['number']},
+    {type: 'before_cursor', nb_inputs: 0, multiple: false, apply_to: ['string']}, {type: 'beyond_cursor', nb_inputs: 0, multiple: false, apply_to: ['string']},
+    {type: 'inside_cycle', nb_inputs: 0, multiple: false, apply_to: ['string']}, {type: 'outside_cycle', nb_inputs: 0, multiple: false, apply_to: ['string']},
+    {type: 'exactly_cycle', nb_inputs: 0, multiple: false, apply_to: ['string']}, {type: 'inside_track_loop', nb_inputs: 0, multiple: false, apply_to: ['string']}, {type: 'inside_marker', nb_inputs: 0, multiple: false, apply_to: ['string']}
+  ];
+  var OPLANG = {equal: 'Equal', not_equal: 'Unequal', greater: 'Bigger', greater_or_equal: 'Bigger or Equal', less: 'Less', less_or_equal: 'Less or Equal', between: 'Inside Range / Inside Bar Range', not_between: 'Outside Range / Outside Bar Range', contains: 'Contains', not_contains: 'Contains Not', is_set: 'Property is Set', is_not_set: 'Property is Not Set', before_cursor: 'Before Cursor', beyond_cursor: 'Beyond Cursor', inside_cycle: 'Inside Cycle', outside_cycle: 'Outside Cycle 🟡', exactly_cycle: 'Exactly Matching Cycle', inside_track_loop: 'Inside Track Loop 🟡', inside_marker: 'Inside Selected Marker 🟡'};
+
+  var kind = 'LE', $b = $('#builder'), actions = [];
+  function initBuilder(rules) {
+    if ($b.data('queryBuilder')) $b.queryBuilder('destroy');
+    $b.queryBuilder({
+      filters: FILTERS[kind], operators: $.fn.queryBuilder.constructor.DEFAULTS.operators.concat(EXTRA_OPS), allow_groups: 3,
+      conditions: ['AND', 'OR'], default_condition: 'AND', lang_code: 'de', lang: {operators: OPLANG, conditions: {AND: 'And', OR: 'Or'}},
+      plugins: [],  // 'sortable' braucht interact.js (~70 KB) – später optional einbetten
+      rules: rules || {condition: 'AND', rules: [{id: kind === 'LE' ? 'type' : 'container', operator: 'equal', value: kind === 'LE' ? 0 : 1}]}
+    });
+    $b.on('afterUpdateRuleValue.queryBuilder afterUpdateRuleOperator.queryBuilder afterUpdateRuleFilter.queryBuilder afterAddRule.queryBuilder afterDeleteRule.queryBuilder afterAddGroup.queryBuilder afterDeleteGroup.queryBuilder afterUpdateGroupCondition.queryBuilder afterMove.queryBuilder', render);
+    render();
+  }
+  function ruleToCond(r) {
+    var code = OPCODE[r.operator], v = r.value, a = Array.isArray(v) ? v : [v, 0];
+    switch (r.id) {
+      case 'type': return M.type(code, parseVal(a[0]));
+      case 'value1': return M.value1(code, parseVal(a[0]), parseVal(a[1]));
+      case 'value2': return M.value2(code, parseVal(a[0]), parseVal(a[1]));
+      case 'length': return M.length(code, parseVal(a[0]), parseVal(a[1]));
+      case 'position_bar': return M.position(code === 207 ? 206 : 208, parseVal(a[0]), parseVal(a[1]));
+      case 'position_time': return M.positionTime(code, TIME_TPL);
+      case 'property': return M.property(code, parseVal(a[0]));
+      case 'context': var p = String(v || '0|0').split('|'); return M.context(code, parseVal(p[0]), parseVal(p[1]));
+      case 'container': return M.container(code, parseVal(a[0]));
+      case 'media': return M.media(code, parseVal(a[0]));
+      case 'name': return M.name(code, String(a[0] || ''));
+      case 'color': return M.color(code, String(a[0] || ''));
+    }
+    throw new Error('Unbekannter Filter ' + r.id);
+  }
+  function groupToTokens(g) {
+    var out = [LE.tok(101)];
+    g.rules.forEach(function (r, i) { if (i) out.push(LE.tok(g.condition === 'OR' ? 104 : 103)); if (r.rules) out.push.apply(out, groupToTokens(r)); else out.push(ruleToCond(r)); });
+    out.push(LE.tok(102)); return out;
+  }
+  // Import: Token-Liste → Regelbaum (links-assoziativ bei gemischtem And/Or)
+  function tokensToGroup(toks) {
+    var pos = 0;
+    function parseSeq() {
+      var items = [], ops = [];
+      while (pos < toks.length) {
+        var t = toks[pos];
+        if (t.type === 'token') {
+          if (t.token === 101) { pos++; items.push(parseSeq()); }
+          else if (t.token === 102) { pos++; break; }
+          else { ops.push(t.token); pos++; }
+        } else { items.push(condToRule(t)); pos++; }
+      }
+      if (items.length === 1) return items[0];
+      var acc = items[0], curOp = null, cur = null;
+      for (var i = 1; i < items.length; i++) {
+        var op = ops[i - 1] === 104 ? 'OR' : 'AND';
+        if (cur && curOp === op) cur.rules.push(items[i]); else { cur = {condition: op, rules: [acc, items[i]]}; curOp = op; acc = cur; }
+      }
+      return acc;
+    }
+    var g = parseSeq(); if (!g.rules) g = {condition: 'AND', rules: [g]}; return g;
+  }
+  function condToRule(o) {
+    var objs = o.items.filter(function (x) { return typeof x !== 'number'; }), ints = o.items.filter(function (x) { return typeof x === 'number'; });
+    var op = CODEOP[o.cond] || 'equal', v0 = objs[0] && objs[0].value, v1 = objs[1] && objs[1].value, two = /between/.test(op);
+    switch (o.cls) {
+      case 'leTypesTarget': return {id: 'type', operator: op, value: v0};
+      case 'leValue1Target': return {id: 'value1', operator: op, value: two ? [v0, v1] : String(v0)};
+      case 'leValue2Target': return {id: 'value2', operator: op, value: two ? [v0, v1] : v0};
+      case 'leLengthTarget': return {id: 'length', operator: op, value: two ? [v0, v1] : v0};
+      case 'lePositionTarget': if (o.cond === 206 || o.cond === 208) return {id: 'position_bar', operator: o.cond === 206 ? 'between' : 'not_between', value: [v0, v1]}; return {id: 'position_time', operator: op, value: 'x'};
+      case 'leFlagsTarget': return {id: 'property', operator: op, value: v0};
+      case 'leContextTypeTarget': return {id: 'context', operator: op, value: ints[0] + '|' + (ints.length > 1 ? ints[1] : (objs[0] ? objs[0].value : 0))};
+      case 'leContainerTypeTarget': return {id: 'container', operator: op, value: v0};
+      case 'leMediaTypeTarget': return {id: 'media', operator: op, value: v0};
+      case 'leNameTypeTarget': return {id: 'name', operator: op, value: objs[0] ? objs[0].str : ''};
+      case 'leColorTypeTarget': return {id: 'color', operator: op, value: objs[0] ? objs[0].str : ''};
+    }
+    throw new Error('Nicht importierbar: ' + o.cls);
+  }
+  /* Aktionen */
+  var ATARGETS = {LE: [4002, 4003, 4006], PLE: [4012]}, OPS_VALUE = [304, 306, 307, 308, 309, 310, 311, 312], OPS_TRACK = [331, 332, 333, 334, 335, 336, 337, 338, 340, 341, 342, 343];
+  function renderActions() {
+    var h = '';
+    actions.forEach(function (a, i) {
+      var ops = a.target === 4012 ? OPS_TRACK : a.target === 4006 ? [312] : OPS_VALUE;
+      h += '<tr><td><select class="form-control input-sm" data-i="' + i + '" data-f="target">' + ATARGETS[kind].map(function (t) { return '<option value="' + t + '"' + (t === a.target ? ' selected' : '') + '>' + C.actionTargets[t] + '</option>'; }).join('') + '</select></td>';
+      h += '<td><select class="form-control input-sm" data-i="' + i + '" data-f="op">' + ops.map(function (o) { return '<option value="' + o + '"' + (o === a.op ? ' selected' : '') + '>' + C.operations[o] + (C.operationsInferred[o] ? ' 🟡' : '') + '</option>'; }).join('') + '</select></td>';
+      if (a.target === 4012) h += '<td><select class="form-control input-sm" data-i="' + i + '" data-f="p1">' + C.genericOp.map(function (n, k) { return '<option value="' + k + '"' + (k === +a.p1 ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select></td><td></td>';
+      else if (a.target === 4006) h += '<td><select class="form-control input-sm" data-i="' + i + '" data-f="p1">' + C.eventTypes.map(function (n, k) { return '<option value="' + k + '"' + (k === +a.p1 ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select></td><td></td>';
+      else h += '<td><input class="form-control input-sm" data-i="' + i + '" data-f="p1" value="' + a.p1 + '" style="width:90px"></td><td><input class="form-control input-sm" data-i="' + i + '" data-f="p2" value="' + a.p2 + '" style="width:90px"' + (a.op === 310 || a.op === 311 ? '' : ' disabled') + '></td>';
+      h += '<td><button class="btn btn-xs btn-default" data-del="' + i + '">✕</button></td></tr>';
+    });
+    $('#actions').html(h);
+  }
+  $('#actions').on('change input', '[data-f]', function () { var a = actions[+this.dataset.i]; var f = this.dataset.f; a[f] = (f === 'target' || f === 'op') ? +this.value : this.value; if (f === 'target') { a.op = a.target === 4012 ? 331 : 312; a.p1 = a.target === 4012 ? 2 : 0; } if (this.tagName === 'SELECT') renderActions(); render(); });
+  $('#actions').on('click', '[data-del]', function () { actions.splice(+this.dataset.del, 1); renderActions(); render(); });
+  $('#addAction').on('click', function () { var t = ATARGETS[kind][0]; actions.push({target: t, op: t === 4012 ? 331 : 304, p1: t === 4012 ? 2 : 1, p2: 0}); if ($('#func').val() === '0' || $('#func').val() === '6' || $('#func').val() === '8') $('#func').val('1'); renderActions(); render(); });
+  function actionToObj(a) {
+    if (a.target === 4012) return M.trackOp(a.op, parseVal(a.p1));
+    if (a.target === 4006) return M.actType(a.op, parseVal(a.p1));
+    if (a.op === 307 || a.op === 308) return M.actFloat(a.target, a.op, parseVal(a.p1));
+    return M.actInt(a.target, a.op, parseVal(a.p1), parseVal(a.p2));
+  }
+  /* Funktionen, Vorschau, Export, Import */
+  function renderFunc() { $('#func').html(Object.keys(C.functions).filter(function (k) { return kind === 'LE' || [0, 1, 6, 8].indexOf(+k) >= 0; }).map(function (k) { return '<option value="' + k + '"' + (k === '1' ? ' selected' : '') + '>' + C.functions[k] + (C.functionsInferred[k] ? ' 🟡' : '') + '</option>'; }).join('')); }
+  function buildDoc() {
+    var rules = $b.queryBuilder('getRules', {skip_empty: true}); if (!rules) throw new Error('Filter unvollständig oder ungültig.');
+    return {magic: 0x4000, one: 1, comment: new Uint8Array(0), actions: actions.map(actionToObj), filters: groupToTokens(rules), trailer: [0, +$('#func').val(), kind === 'PLE' ? 1 : 0, 0, 0, 0, 0]};
+  }
+  function render() {
+    var msgs = [];
+    try { var d = buildDoc(), bytes = LE.encode(d), desc = LE.describe(d); $('#preview').text(desc.text + '\n' + bytes.length + ' Bytes'); }
+    catch (e) { $('#preview').text('⚠ ' + e.message); }
+    if (actions.length && ['0', '6', '8'].indexOf($('#func').val()) >= 0) msgs.push(['warn', 'Aktionen werden bei dieser Funktion ignoriert.']);
+    if (!actions.length && ['1', '2', '3', '4', '5', '7'].indexOf($('#func').val()) >= 0) msgs.push(['warn', 'Funktion ohne Aktionszeilen ändert nichts.']);
+    $('#msgs').html(msgs.map(function (m) { return '<li class="' + m[0] + '">' + m[1] + '</li>'; }).join(''));
+  }
+  $('#func').on('change', render);
+  $('#btnExport').on('click', function () {
+    var d = buildDoc(), xml = LE.toXml(kind === 'PLE' ? 'Project_Logical_EditorPreset' : 'Logical_EditPreset', LE.encode(d), 1);
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([xml], {type: 'application/xml'})); a.download = ($('#presetName').val() || 'Preset').replace(/[\\/:*?"<>|]/g, '_') + '.xml'; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  });
+  function importText(text, fname) {
+    try {
+      var px = LE.parseXml(text), d = LE.decode(px.bytes), k = px.root === 'Project_Logical_EditorPreset' ? 'PLE' : 'LE';
+      if (k !== kind) { kind = k; $('input[name=kind][value=' + k + ']').prop('checked', true); renderFunc(); }
+      actions = []; var skipped = 0;
+      d.actions.forEach(function (o) { var objs = o.items.filter(function (x) { return typeof x !== 'number'; }); if ((o.target === 4002 || o.target === 4003) && objs.length >= 2 && 'value' in objs[0]) actions.push({target: o.target, op: o.op, p1: objs[0].value, p2: objs[1].value}); else if (o.target === 4012 && objs[0]) actions.push({target: 4012, op: o.op, p1: objs[0].value, p2: 0}); else if (o.target === 4006 && objs[0]) actions.push({target: 4006, op: o.op, p1: objs[0].value, p2: 0}); else skipped++; });
+      var g = tokensToGroup(d.filters.filter(function (t) { return t.type === 'token' || t.type === 'cond'; }));
+      initBuilder(g); renderActions(); $('#func').val(String(d.trailer[1] != null ? d.trailer[1] : 1)); $('#presetName').val((fname || 'Import').replace(/\.xml$/i, '')); render();
+      $('#importInfo').text('Geladen: ' + fname + ' (' + px.bytes.length + ' Bytes)' + (skipped ? ' – ' + skipped + ' Aktion(en) nicht abgebildet' : ''));
+    } catch (e) { $('#importInfo').html('<span class="text-danger">Import fehlgeschlagen: ' + $('<i>').text(e.message).html() + '</span>'); }
+  }
+  $('#file').on('change', function () { var f = this.files[0]; if (f) f.text().then(function (t) { importText(t, f.name); }); });
+  $('input[name=kind]').on('change', function () { kind = this.value; actions = []; renderFunc(); renderActions(); initBuilder(); });
+  var RECIPES = [{name: '— Rezept —'},
+    {name: 'Noten auf Zwei und Vier auswählen', kind: 'LE', func: 6, rules: {condition: 'AND', rules: [{id: 'type', operator: 'equal', value: 0}, {condition: 'OR', rules: [{id: 'position_bar', operator: 'between', value: [460, 500]}, {id: 'position_bar', operator: 'between', value: [1420, 1460]}]}]}, actions: []},
+    {name: 'Alle CC vor dem Cursor löschen', kind: 'LE', func: 0, rules: {condition: 'AND', rules: [{id: 'type', operator: 'equal', value: 2}, {id: 'value1', operator: 'between', value: ['0', '127']}, {id: 'position_time', operator: 'before_cursor', value: 'x'}]}, actions: []},
+    {name: 'Kurze Noten (< 60 Ticks) löschen', kind: 'LE', func: 0, rules: {condition: 'AND', rules: [{id: 'type', operator: 'equal', value: 0}, {id: 'length', operator: 'less', value: 60}]}, actions: []},
+    {name: 'Aftertouch → CC1 (Type ändern)', kind: 'LE', func: 1, rules: {condition: 'AND', rules: [{id: 'type', operator: 'equal', value: 4}]}, actions: [{target: 4006, op: 312, p1: 2, p2: 0}, {target: 4002, op: 312, p1: 1, p2: 0}]},
+    {name: 'PLE: Gemutete MIDI-Parts löschen', kind: 'PLE', func: 0, rules: {condition: 'AND', rules: [{id: 'media', operator: 'equal', value: 1}, {id: 'container', operator: 'equal', value: 2}, {id: 'property', operator: 'is_set', value: 0}]}, actions: []},
+    {name: 'PLE: Spuren mit „voc“ im Namen muten (Toggle)', kind: 'PLE', func: 1, rules: {condition: 'AND', rules: [{id: 'container', operator: 'equal', value: 1}, {id: 'name', operator: 'contains', value: 'voc'}]}, actions: [{target: 4012, op: 335, p1: 2, p2: 0}]}];
+  $('#recipes').html(RECIPES.map(function (r, i) { return '<option value="' + i + '">' + r.name + '</option>'; }).join('')).on('change', function () {
+    var r = RECIPES[+this.value]; if (!r.rules) return; kind = r.kind; $('input[name=kind][value=' + kind + ']').prop('checked', true); renderFunc(); actions = r.actions.slice(); renderActions(); initBuilder(r.rules); $('#func').val(String(r.func)); $('#presetName').val(r.name.replace(/^PLE: /, '')); render(); this.value = 0;
+  });
+  renderFunc(); renderActions(); initBuilder();
+})(jQuery);
+</script>
+</body>
+</html>

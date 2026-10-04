@@ -43,8 +43,8 @@ def f32(u):
 
 
 class Parser:
-    VALUE12 = ('LeUIntValue', 'PControllerValue', 'LeFlagsValue', 'LeTypeValue', 'LeUFloatValue')
-    VALUE4 = ('LeContainerTypeValue', 'LeDomainTypeValue', 'LeGenericOpValue', 'UIntValue', 'UFloatValue')
+    VALUE12 = ('LeUIntValue', 'PControllerValue', 'LeFlagsValue', 'LeTypeValue', 'LeUFloatValue', 'PMidiNoteValue')
+    VALUE4 = ('LeContainerTypeValue', 'LeDomainTypeValue', 'LeGenericOpValue', 'LeMediaTypeValue', 'UIntValue', 'UFloatValue')
 
     def __init__(self, b):
         self.b, self.i, self.classes, self.errors = b, 0, {}, []

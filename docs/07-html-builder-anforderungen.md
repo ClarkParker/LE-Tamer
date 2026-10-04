@@ -3,7 +3,11 @@
 > **Stand:** `le-tamer.html` setzt die Muss-Funktionen 1–7 um (PLE experimentell). Encoder/Decoder liegen im
 > `<script id="le-core">`-Block und werden von `tools/roundtrip-test.mjs` ohne Browser getestet
 > (331/331 Dateien byte-identisch; neu erzeugte Presets identisch mit Cubase-13-Factory-Dateien).
-> Offen: Ladetest in Cubase 15, fehlende Codes (siehe `06-preset-dateiformat.md`, Kapitel 11).
+> Stand nach Korpus-Auswertung (579 Presets): Encoder reproduziert 1374/1374 Dateien byteidentisch; neu erzeugte Presets sind
+> byteidentisch mit Cubase-13- und Cubase-15-Dateien (LE legacy- und modern-Stil, PLE). Beide Oberflächen (`le-tamer.html`,
+> `prototype/poc-querybuilder.html`) unterstützen Type/Subtype/Main Value/Channel/Length/Position (Bar Range, Cursor/Cycle)/
+> Property/Context Variable (LE) und Container/Media/Name/Color/Property + Track Operation (PLE).
+> Offen: Ladetest in Cubase 15; Zeit-*Werte*, Pre-/Post-Befehle, Output Name, Secondary Value, Score-Ziele (siehe `06`, Kap. 11/13).
 
 ## Ziel
 Eine **einzelne HTML-Datei** (kein Build, kein Server, offline nutzbar), mit der sich Presets für Logical Editor und

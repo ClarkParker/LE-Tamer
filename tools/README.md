@@ -20,3 +20,8 @@ node tools/roundtrip-test.mjs samples/steinberg-factory-c13 "pfad/zu/weiteren/Pr
 ```
 Ergebnis auf dem Analyse-Korpus: 331 Dateien, 331 byte-identisch. Der XML-*Text* ist nur bei Dateien mit CRLF-Zeilenenden
 identisch (Cubase 13); Cubase 9 auf macOS schrieb reine CR-Zeilenenden.
+
+## evidence.py
+Erzeugt `docs/10-belege.md` (Belegzahlen je Code) aus dem lokalen Preset-Korpus. Der Korpus selbst (Forum-Anhänge, Metagrid,
+Factory-Presets) ist aus Lizenzgründen **nicht** im Repo; die Pfade am Skriptanfang müssen auf eine lokale Sammlung zeigen.
+Die Zuordnung Code → Name kommt aus `data/le-codes.json`.

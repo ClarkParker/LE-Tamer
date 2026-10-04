@@ -62,6 +62,7 @@ table.actions td{padding:3px}
       {id: 'position_bar', label: 'Position – Bar Range (Ticks im Takt)', type: 'integer', operators: ['between', 'not_between'], validation: {min: 0, max: 1920}},
       {id: 'position_time', label: 'Position – Cursor / Cycle', type: 'string', input: 'select', values: {x: '–'}, operators: ['before_cursor', 'beyond_cursor', 'inside_cycle', 'outside_cycle', 'exactly_cycle', 'inside_track_loop', 'inside_marker']},
       {id: 'property', label: 'Property', type: 'integer', input: 'select', values: sel(C.properties, C.propertiesInferred), operators: ['is_set', 'is_not_set']},
+      {id: 'channel', label: 'Channel (1–16)', type: 'integer', operators: NUMOPS, validation: {min: 1, max: 16}},
       {id: 'context', label: 'Context Variable', type: 'string', operators: ['equal', 'not_equal', 'greater', 'greater_or_equal', 'less', 'less_or_equal'],
         input: function (rule, name) { var h = '<select class="form-control input-sm" name="' + name + '_v">'; C.contextVars.forEach(function (n, i) { h += '<option value="' + i + '">' + n + (C.contextVarsInferred[i] ? ' 🟡' : '') + '</option>'; }); h += '</select> <input class="form-control input-sm" name="' + name + '_p2" type="number" placeholder="Param 2" style="width:90px">'; return h; },
         valueGetter: function (rule) { var $c = rule.$el.find('.rule-value-container'); return $c.find('[name$=_v]').val() + '|' + ($c.find('[name$=_p2]').val() || 0); },
@@ -108,6 +109,7 @@ table.actions td{padding:3px}
       case 'position_bar': return M.position(code === 207 ? 206 : 208, parseVal(a[0]), parseVal(a[1]));
       case 'position_time': return M.positionTime(code, TIME_TPL);
       case 'property': return M.property(code, parseVal(a[0]));
+      case 'channel': return M.channel(code, parseVal(a[0]) - 1, Math.max(0, parseVal(a[1]) - 1));
       case 'context': var p = String(v || '0|0').split('|'); return M.context(code, parseVal(p[0]), parseVal(p[1]));
       case 'container': return M.container(code, parseVal(a[0]));
       case 'media': return M.media(code, parseVal(a[0]));
@@ -154,6 +156,9 @@ table.actions td{padding:3px}
       case 'leLengthTarget': return {id: 'length', operator: op, value: two ? [v0, v1] : v0};
       case 'lePositionTarget': if (o.cond === 206 || o.cond === 208) return {id: 'position_bar', operator: o.cond === 206 ? 'between' : 'not_between', value: [v0, v1]}; return {id: 'position_time', operator: op, value: 'x'};
       case 'leFlagsTarget': return {id: 'property', operator: op, value: v0};
+      case 'leChannelTarget': return {id: 'channel', operator: op, value: two ? [v0 + 1, v1 + 1] : v0 + 1};
+      case 'SubTypeTarget': return {id: 'value1', operator: op, value: two ? [v0, v1] : String(v0)};
+      case 'MainValueTarget': return {id: 'value2', operator: op, value: two ? [v0, v1] : v0};
       case 'leContextTypeTarget': return {id: 'context', operator: op, value: ints[0] + '|' + (ints.length > 1 ? ints[1] : (objs[0] ? objs[0].value : 0))};
       case 'leContainerTypeTarget': return {id: 'container', operator: op, value: v0};
       case 'leMediaTypeTarget': return {id: 'media', operator: op, value: v0};
@@ -163,26 +168,28 @@ table.actions td{padding:3px}
     throw new Error('Nicht importierbar: ' + o.cls);
   }
   /* Aktionen */
-  var ATARGETS = {LE: [4002, 4003, 4006], PLE: [4012]}, OPS_VALUE = [304, 306, 307, 308, 309, 310, 311, 312], OPS_TRACK = [331, 332, 333, 334, 335, 336, 337, 338, 340, 341, 342, 343];
+  var ATARGETS = {LE: [4002, 4003, 4005, 4006], PLE: [4012]}, OPS_VALUE = [304, 306, 307, 308, 309, 310, 311, 312, 317], OPS_TRACK = [331, 332, 333, 334, 335, 336, 337, 338, 340, 341, 342, 343, 344, 371];
   function renderActions() {
     var h = '';
     actions.forEach(function (a, i) {
-      var ops = a.target === 4012 ? OPS_TRACK : a.target === 4006 ? [312] : OPS_VALUE;
+      var ops = a.target === 4012 ? OPS_TRACK : (a.target === 4006 || a.target === 4005) ? [312] : OPS_VALUE;
       h += '<tr><td><select class="form-control input-sm" data-i="' + i + '" data-f="target">' + ATARGETS[kind].map(function (t) { return '<option value="' + t + '"' + (t === a.target ? ' selected' : '') + '>' + C.actionTargets[t] + '</option>'; }).join('') + '</select></td>';
       h += '<td><select class="form-control input-sm" data-i="' + i + '" data-f="op">' + ops.map(function (o) { return '<option value="' + o + '"' + (o === a.op ? ' selected' : '') + '>' + C.operations[o] + (C.operationsInferred[o] ? ' 🟡' : '') + '</option>'; }).join('') + '</select></td>';
       if (a.target === 4012) h += '<td><select class="form-control input-sm" data-i="' + i + '" data-f="p1">' + C.genericOp.map(function (n, k) { return '<option value="' + k + '"' + (k === +a.p1 ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select></td><td></td>';
+      else if (a.target === 4005) h += '<td><input class="form-control input-sm" data-i="' + i + '" data-f="p1" value="' + a.p1 + '" style="width:70px" title="Kanal 1–16"></td><td></td>';
       else if (a.target === 4006) h += '<td><select class="form-control input-sm" data-i="' + i + '" data-f="p1">' + C.eventTypes.map(function (n, k) { return '<option value="' + k + '"' + (k === +a.p1 ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select></td><td></td>';
       else h += '<td><input class="form-control input-sm" data-i="' + i + '" data-f="p1" value="' + a.p1 + '" style="width:90px"></td><td><input class="form-control input-sm" data-i="' + i + '" data-f="p2" value="' + a.p2 + '" style="width:90px"' + (a.op === 310 || a.op === 311 ? '' : ' disabled') + '></td>';
       h += '<td><button class="btn btn-xs btn-default" data-del="' + i + '">✕</button></td></tr>';
     });
     $('#actions').html(h);
   }
-  $('#actions').on('change input', '[data-f]', function () { var a = actions[+this.dataset.i]; var f = this.dataset.f; a[f] = (f === 'target' || f === 'op') ? +this.value : this.value; if (f === 'target') { a.op = a.target === 4012 ? 331 : 312; a.p1 = a.target === 4012 ? 2 : 0; } if (this.tagName === 'SELECT') renderActions(); render(); });
+  $('#actions').on('change input', '[data-f]', function () { var a = actions[+this.dataset.i]; var f = this.dataset.f; a[f] = (f === 'target' || f === 'op') ? +this.value : this.value; if (f === 'target') { a.op = a.target === 4012 ? 331 : 312; a.p1 = a.target === 4012 ? 2 : a.target === 4005 ? 1 : 0; } if (this.tagName === 'SELECT') renderActions(); render(); });
   $('#actions').on('click', '[data-del]', function () { actions.splice(+this.dataset.del, 1); renderActions(); render(); });
   $('#addAction').on('click', function () { var t = ATARGETS[kind][0]; actions.push({target: t, op: t === 4012 ? 331 : 304, p1: t === 4012 ? 2 : 1, p2: 0}); if ($('#func').val() === '0' || $('#func').val() === '6' || $('#func').val() === '8') $('#func').val('1'); renderActions(); render(); });
   function actionToObj(a) {
     if (a.target === 4012) return M.trackOp(a.op, parseVal(a.p1));
     if (a.target === 4006) return M.actType(a.op, parseVal(a.p1));
+    if (a.target === 4005) return M.actChannel(a.op, Math.max(0, parseVal(a.p1) - 1));
     if (a.op === 307 || a.op === 308) return M.actFloat(a.target, a.op, parseVal(a.p1));
     return M.actInt(a.target, a.op, parseVal(a.p1), parseVal(a.p2));
   }
@@ -190,7 +197,7 @@ table.actions td{padding:3px}
   function renderFunc() { $('#func').html(Object.keys(C.functions).filter(function (k) { return kind === 'LE' || [0, 1, 6, 8].indexOf(+k) >= 0; }).map(function (k) { return '<option value="' + k + '"' + (k === '1' ? ' selected' : '') + '>' + C.functions[k] + (C.functionsInferred[k] ? ' 🟡' : '') + '</option>'; }).join('')); }
   function buildDoc() {
     var rules = $b.queryBuilder('getRules', {skip_empty: true}); if (!rules) throw new Error('Filter unvollständig oder ungültig.');
-    return {magic: 0x4000, one: 1, comment: new Uint8Array(0), actions: actions.map(actionToObj), filters: groupToTokens(rules), trailer: [0, +$('#func').val(), kind === 'PLE' ? 1 : 0, 0, 0, 0, 0]};
+    return {magic: 0x4000, one: 1, comment: new Uint8Array(0), actions: actions.map(actionToObj), filters: groupToTokens(rules), trailer: M.trailer(+$('#func').val(), kind === 'PLE')};
   }
   function render() {
     var msgs = [];
@@ -210,7 +217,7 @@ table.actions td{padding:3px}
       var px = LE.parseXml(text), d = LE.decode(px.bytes), k = px.root === 'Project_Logical_EditorPreset' ? 'PLE' : 'LE';
       if (k !== kind) { kind = k; $('input[name=kind][value=' + k + ']').prop('checked', true); renderFunc(); }
       actions = []; var skipped = 0;
-      d.actions.forEach(function (o) { var objs = o.items.filter(function (x) { return typeof x !== 'number'; }); if ((o.target === 4002 || o.target === 4003) && objs.length >= 2 && 'value' in objs[0]) actions.push({target: o.target, op: o.op, p1: objs[0].value, p2: objs[1].value}); else if (o.target === 4012 && objs[0]) actions.push({target: 4012, op: o.op, p1: objs[0].value, p2: 0}); else if (o.target === 4006 && objs[0]) actions.push({target: 4006, op: o.op, p1: objs[0].value, p2: 0}); else skipped++; });
+      d.actions.forEach(function (o) { var objs = o.items.filter(function (x) { return typeof x !== 'number'; }); if ((o.target === 4002 || o.target === 4003 || o.target === 4025 || o.target === 4024 || o.target === 4022) && objs.length >= 2 && 'value' in objs[0]) actions.push({target: o.target === 4025 ? 4002 : (o.target === 4024 || o.target === 4022) ? 4003 : o.target, op: o.op, p1: objs[0].value, p2: objs[1].value}); else if (o.target === 4005 && objs[0]) actions.push({target: 4005, op: o.op, p1: objs[0].value + 1, p2: 0}); else if (o.target === 4012 && objs[0]) actions.push({target: 4012, op: o.op, p1: objs[0].value, p2: 0}); else if (o.target === 4006 && objs[0]) actions.push({target: 4006, op: o.op, p1: objs[0].value, p2: 0}); else skipped++; });
       var g = tokensToGroup(d.filters.filter(function (t) { return t.type === 'token' || t.type === 'cond'; }));
       initBuilder(g); renderActions(); $('#func').val(String(d.trailer[1] != null ? d.trailer[1] : 1)); $('#presetName').val((fname || 'Import').replace(/\.xml$/i, '')); render();
       $('#importInfo').text('Geladen: ' + fname + ' (' + px.bytes.length + ' Bytes)' + (skipped ? ' – ' + skipped + ' Aktion(en) nicht abgebildet' : ''));

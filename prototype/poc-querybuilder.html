@@ -172,21 +172,22 @@ var LE = (function () {
   var CODES = {
     tokens: {101:'(',102:')',103:'And',104:'Or'},
     functions: {0:'Delete',1:'Transform',2:'Insert',3:'Insert Exclusive',4:'Copy',5:'Extract to Track',6:'Select',7:'Extract to Lanes',8:'Deselect'},
-    functionsInferred: {3:1,7:1},
-    conditions: {200:'Equal',201:'Unequal',202:'Bigger',203:'Bigger or Equal',204:'Less',205:'Less or Equal',206:'Inside Bar Range',207:'Inside Range',208:'Outside Bar Range',209:'Outside Range',210:'Contains',211:'Property is Set',212:'Property is Not Set',213:'Contains Not',216:'Before Cursor',217:'Beyond Cursor',218:'Inside Cycle',219:'Outside Cycle',220:'Exactly Matching Cycle',221:'Inside Track Loop',222:'Inside Selected Marker'},
-    conditionsInferred: {203:1,213:1,219:1,221:1,222:1},
-    operations: {221:'(keine)',304:'Add',306:'Subtract',307:'Multiply by',308:'Divide by',309:'Round by',310:'Set Random Values Between',311:'Set Relative Random Values Between',312:'Set to Fixed Value',327:'Append',329:'Generate Name',330:'Replace Search String',331:'Folder',332:'Record',333:'Monitor',334:'Solo',335:'Mute',336:'Read',337:'Write',338:'EQ Bypass',339:'(unbekannt 339)',340:'Inserts Bypass',341:'Sends Bypass',342:'Lanes Active',343:'Hide Track',355:'Remove NoteExp'},
-    operationsInferred: {332:1,333:1,334:1,336:1,337:1,338:1,339:1,341:1},
-    actionTargets: {4000:'Position',4001:'Length',4002:'Subtype (Value 1)',4003:'Main Value (Value 2)',4006:'Type',4007:'Name',4012:'Track Operation',4013:'Trim',4014:'Set Color',4016:'NoteExp Operation'},
-    filterTargets: {leTypesTarget:'Type',leValue1Target:'Subtype (Value 1)',leValue2Target:'Main Value (Value 2)',lePositionTarget:'Position',leLengthTarget:'Length',leFlagsTarget:'Property',leContextTypeTarget:'Context Variable',leContainerTypeTarget:'Container Type',leMediaTypeTarget:'Media Type',leNameTypeTarget:'Name',leColorTypeTarget:'Color Name'},
+    functionsInferred: {7:1},
+    conditions: {200:'Equal',201:'Unequal',202:'Bigger',203:'Bigger or Equal',204:'Less',205:'Less or Equal',206:'Inside Bar Range',207:'Inside Range',208:'Outside Bar Range',209:'Outside Range',210:'Contains',211:'Property is Set',212:'Property is Not Set',214:'All Types',216:'Before Cursor',217:'Beyond Cursor',218:'Inside Cycle',219:'Outside Cycle',220:'Exactly Matching Cycle',221:'Contains Not',222:'Inside Selected Marker'},
+    conditionsInferred: {219:1,222:1},
+    operations: {221:'(keine)',304:'Add',306:'Subtract',307:'Multiply by',308:'Divide by',309:'Round by',310:'Set Random Values Between',311:'Set Relative Random Values Between',312:'Set to Fixed Value',317:'Linear Change in Loop Range',326:'Replace',327:'Append',328:'Prepend',329:'Generate Name',330:'Replace Search String',331:'Folder',332:'Record',333:'Monitor',334:'Solo',335:'Mute',336:'Read',337:'Write',338:'EQ Bypass',339:'(unbekannt 339)',340:'Inserts Bypass',341:'Sends Bypass',342:'Lanes Active',343:'Hide Track',344:'Time Domain',355:'Remove NoteExp',364:'(unbekannt 364)',365:'Erase Before',370:'Enable Send Slot by Number',371:'Enable Insert Slot by Number'},
+    operationsInferred: {336:1,337:1,338:1,339:1,341:1,364:1,370:1},
+    actionTargets: {4000:'Position',4001:'Length',4002:'Subtype (Value 1)',4003:'Main Value (Value 2)',4005:'Channel',4006:'Type',4007:'Name',4012:'Track Operation',4013:'Trim',4014:'Set Color',4016:'NoteExp Operation',4022:'Velocity',4024:'Main Value',4025:'Subtype'},
+    filterTargets: {leTypesTarget:'Type',leValue1Target:'Subtype (Value 1)',leValue2Target:'Main Value (Value 2)',SubTypeTarget:'Subtype',MainValueTarget:'Main Value',lePositionTarget:'Position',leLengthTarget:'Length',leChannelTarget:'Channel',leFlagsTarget:'Property',leHistoryTarget:'Last Event',leContextTypeTarget:'Context Variable',leContainerTypeTarget:'Container Type',leMediaTypeTarget:'Media Type',leNameTypeTarget:'Name',leColorTypeTarget:'Color Name'},
+    trailerVersion: 0x1100,
     mediaTypes: ['Audio','MIDI','Automation','Marker','Transpose','Arranger','Tempo','Signature','Chord','Scale Event','Video','Group','Effect','Device','VCA'],
-    mediaTypesInferred: {3:1,4:1,5:1,6:1,9:1,10:1,11:1,12:1,13:1,14:1},
-    eventTypes: ['Note','Poly Pressure','Controller','Program Change','Aftertouch','Pitchbend','VST 3 Event','SysEx','SMF Event'],
-    eventTypesInferred: {1:1,3:1,6:1,7:1,8:1},
+    mediaTypesInferred: {4:1,5:1,6:1,9:1,10:1,11:1,12:1,13:1,14:1},
+    eventTypes: ['Note','Poly Pressure','Controller','Program Change','Aftertouch','Pitchbend','SysEx','VST 3 Event','SMF Event'],
+    eventTypesInferred: {1:1,7:1,8:1},
     properties: ['Muted','Selected','Empty','Inside NoteExp','Is valid VST 3','Hidden','Has Track Version','Follows Chord Track','Is Disabled','Parent Object Is Selected'],
-    propertiesInferred: {4:1,8:1,9:1},
+    propertiesInferred: {4:1,9:1},
     contextVars: ['Highest Pitch','Lowest Pitch','Average Pitch','Highest Velocity','Lowest Velocity','Average Velocity','Highest CC Value','Lowest CC Value','Average CC Value','No. of Notes in Chord (Part)','No. of Voices (Part)','Position in Chord (Part)','Note Number in Chord (lowest = 0)','Position in Chord (Chord Track)','Voice','Highest in Chord from at Least n Notes','Lowest in Chord from at Least n Notes'],
-    contextVarsInferred: {1:1,2:1,4:1,5:1,6:1,7:1,8:1,9:1,10:1,11:1,12:1,15:1,16:1},
+    contextVarsInferred: {1:1,2:1,4:1,5:1,6:1,7:1,8:1,9:1,10:1,11:1,15:1,16:1},
     contextVarsNeedP2: {9:1,10:1,11:1,12:1,13:1,14:1,15:1,16:1},
     containerTypes: ['Folder Track','Track','Part','Event'],
     containerTypesInferred: {},
@@ -201,18 +202,24 @@ var LE = (function () {
     LeContainerTypeValue:['UIntValue','UValue'], LeDomainTypeValue:['UIntValue','UValue'],
     LeFlagsValue:['LeUIntValue','UIntValue','UValue'], PControllerValue:['LeUIntValue','UIntValue','UValue'],
     LeUFloatValue:['UFloatValue','UValue'], UStringValue:['UValue'],
-    LeMediaTypeValue:['UIntValue','UValue'], PMidiNoteValue:['LeUIntValue','UIntValue','UValue'],
+    LeMediaTypeValue:['UIntValue','UValue'], PMidiNoteValue:['LeUIntValue','UIntValue','UValue'], LEMidiChannelValue:['LeUIntValue','UIntValue','UValue'],
+    LeMagicNamesValue:['UIntValue','UValue'], LeHistoryValue:['LeUIntValue','UIntValue','UValue'], LeAllroundValue:['LeUIntValue','UIntValue','UValue'],
+    PVelocityValue:['UFloatDefValue','UFloatValue','UValue'],
+    SubTypeTarget:['leValue1Target','leConditionTarget','leToken','CmObject'], MainValueTarget:['leValue2Target','leConditionTarget','leToken','CmObject'],
+    ActionTargetSubType:['leActionTargetValue1','leActionBase','CmObject'], ActionTargetMainValue:['leActionTargetValue2','leActionBase','CmObject'], ActionTargetVelocity:['leActionBase','CmObject'],
     LeTTimeValue:['TTimeValue','TTimeValueBase','UValue'], LeTTimeDiffValue:['TDiffTimeValue','TTimeValueBase','UValue']
   };
   function chainFor(cls) {
     if (CHAINS[cls]) return CHAINS[cls];
-    if (cls.indexOf('leActionTarget') === 0) return ['leActionBase', 'CmObject'];
-    if (cls.indexOf('le') === 0 && /Target$/.test(cls)) return ['leConditionTarget', 'leToken', 'CmObject'];
+    if (cls.indexOf('ActionTarget') >= 0) return ['leActionBase', 'CmObject'];
+    if (/Target$/.test(cls) && cls !== 'leConditionTarget') return ['leConditionTarget', 'leToken', 'CmObject'];
     return [];
   }
-  var VALUE12 = {LeUIntValue:1, PControllerValue:1, LeFlagsValue:1, LeTypeValue:1, LeUFloatValue:1, PMidiNoteValue:1};
-  var VALUE4 = {LeContainerTypeValue:1, LeDomainTypeValue:1, LeGenericOpValue:1, LeMediaTypeValue:1, UIntValue:1, UFloatValue:1};
-  var FLOATCLS = {LeUFloatValue:1, UFloatValue:1};
+  function isActionCls(cls) { return cls.indexOf('ActionTarget') >= 0; }
+  function isCondCls(cls) { return /Target$/.test(cls) && cls !== 'leConditionTarget' && !isActionCls(cls); }
+  var VALUE12 = {LeUIntValue:1, PControllerValue:1, LeFlagsValue:1, LeTypeValue:1, LeUFloatValue:1, PMidiNoteValue:1, LEMidiChannelValue:1, LeHistoryValue:1, LeAllroundValue:1};
+  var VALUE4 = {LeContainerTypeValue:1, LeDomainTypeValue:1, LeGenericOpValue:1, LeMediaTypeValue:1, LeMagicNamesValue:1, PVelocityValue:1, UIntValue:1, UFloatValue:1};
+  var FLOATCLS = {LeUFloatValue:1, UFloatValue:1, PVelocityValue:1, UFloatDefValue:1};
 
   /* ---------- Hilfsfunktionen ---------- */
   function hexToBytes(hex) {
@@ -270,15 +277,15 @@ var LE = (function () {
     else throw new Error('Ungültiges Objekt-Tag bei Offset ' + this.i);
     var size = this.u32(), start = this.i, end = start + size;
     var o = {cls: name, kind: kind, off: off, ver: ver, bases: bases, size: size};
-    if (name.indexOf('leActionTarget') === 0) {
+    if (isActionCls(name)) {
       o.type = 'action'; o.flags16 = this.u16(); o.op = this.u32(); o.target = this.u32(); o.items = [];
       while (this.i < end) o.items.push(this.isTag() ? this.obj() : this.i32());
-    } else if (name.indexOf('le') === 0 && /Target$/.test(name)) {
+    } else if (isCondCls(name)) {
       o.type = 'cond'; o.c0 = this.u32(); o.cond = this.u32(); o.c2 = this.u32(); o.items = [];
       while (this.i < end) o.items.push(this.isTag() ? this.obj() : this.i32());
     } else if (name === 'leToken') { o.type = 'token'; o.token = this.u32(); }
-    else if (VALUE12[name] && size === 12) { o.type = 'val12'; o.min = this.i32(); o.max = this.i32(); o.value = FLOATCLS[name] ? this.f32() : this.i32(); }
-    else if (VALUE4[name] && size === 4) { o.type = 'val4'; o.value = FLOATCLS[name] ? this.f32() : this.i32(); }
+    else if ((VALUE12[name] || /Value$/.test(name)) && size === 12) { o.type = 'val12'; o.min = this.i32(); o.max = this.i32(); o.value = FLOATCLS[name] ? this.f32() : this.i32(); }
+    else if ((VALUE4[name] || /Values?$/.test(name)) && size === 4) { o.type = 'val4'; o.value = FLOATCLS[name] ? this.f32() : this.i32(); }
     else if (name === 'UStringValue') { o.type = 'str'; o.raw = this.b.slice(start, end); try { var ln = this.dv.getUint32(start, true); var sb = this.b.subarray(start + 4, start + 4 + ln); var z = sb.indexOf(0); o.str = utf8Decode(z < 0 ? sb : sb.subarray(0, z)); } catch (e) { o.str = ''; } this.i = end; }
     else { o.type = 'raw'; o.raw = this.b.slice(start, end); this.i = end; }
     if (this.i !== end) { this.errors.push('Größenabweichung in ' + name + ' (' + this.i + ' statt ' + end + ')'); this.i = end; }
@@ -364,6 +371,15 @@ var LE = (function () {
     color: function (c, text) { return cond('leColorTypeTarget', c, [{cls: 'UStringValue', type: 'str', str: text}, 0]); },
     positionTime: function (c, tpl) { return cond('lePositionTarget', c, [{cls: tpl.p1.cls, type: 'raw', raw: hexToBytes(tpl.p1.hex)}, {cls: tpl.p2.cls, type: 'raw', raw: hexToBytes(tpl.p2.hex)}]); },
     actType: function (op, t) { return {cls: 'leActionTargetTypes', type: 'action', flags16: 0, op: op, target: 4006, items: [v12('LeTypeValue', 0, 8, t), v12('LeUIntValue', 0, MAXINT, 0), 0]}; },
+    channel: function (c, ch1, ch2) { return cond('leChannelTarget', c, [v12('LEMidiChannelValue', 0, 15, ch1), v12('LEMidiChannelValue', 0, 15, ch2 || 0)]); },
+    actChannel: function (op, ch) { return action('leActionTargetChannel', 4005, op, v12('LEMidiChannelValue', 0, 15, ch), v12('LEMidiChannelValue', 0, 15, 0)); },
+    /* Cubase-13+-Schreibweise (Unterklassen) */
+    subType13: function (c, p1, p2, ctx) { var vc = ctx === 'note' ? 'PMidiNoteValue' : ctx === 'cc' ? 'PControllerValue' : 'LeUIntValue'; return cond('SubTypeTarget', c, [v12(vc, 0, 127, p1), v12(vc, 0, 127, p2 || 0)]); },
+    mainValue13: function (c, p1, p2) { return cond('MainValueTarget', c, [v4('PVelocityValue', p1), v4('PVelocityValue', p2 || 0)]); },
+    actSubType13: function (op, p1, p2, ctx) { var vc = (ctx === 'cc' && op === 312) ? 'PControllerValue' : 'LeUIntValue'; return action('ActionTargetSubType', 4025, op, v12(vc, 0, 127, p1), v12(vc, 0, 127, p2 || 0)); },
+    actMainValueFixed13: function (v) { return action('ActionTargetMainValue', 4024, 312, v4('PVelocityValue', v), v4('PVelocityValue', 0)); },
+    actVelocityFixed13: function (v) { return action('ActionTargetVelocity', 4022, 312, v4('PVelocityValue', v), v4('PVelocityValue', 0)); },
+    trailer: function (func, isPLE) { return [0, func, isPLE ? 1 : 0, 0, 0x1100, 0, 0]; },
     actInt: function (target, op, p1, p2) { var cls = target === 4002 ? 'leActionTargetValue1' : 'leActionTargetValue2'; return action(cls, target, op, v12('LeUIntValue', 0, 127, p1), v12('LeUIntValue', 0, 127, p2 || 0)); },
     actFloat: function (target, op, p1) { var cls = target === 4002 ? 'leActionTargetValue1' : 'leActionTargetValue2'; return action(cls, target, op, v12('LeUFloatValue', 0, 127, p1), v12('LeUFloatValue', 0, 127, 0)); },
     trackOp: function (op, mode) { return action('leActionTargetTrackOp', 4012, op, v4('LeGenericOpValue', mode), v12('LeUIntValue', 0, 1, 0)); }
@@ -388,6 +404,9 @@ var LE = (function () {
     if (o.cls === 'leFlagsTarget' && params[0]) p1 = CODES.properties[params[0].value] || p1;
     if (o.cls === 'leContainerTypeTarget' && params[0]) p1 = CODES.containerTypes[params[0].value] || p1;
     if (o.cls === 'leMediaTypeTarget' && params[0]) p1 = CODES.mediaTypes[params[0].value] || p1;
+    if (o.cls === 'leChannelTarget' && params[0]) { p1 = 'Kanal ' + (params[0].value + 1); if (params[1]) p2 = 'Kanal ' + (params[1].value + 1); }
+    if ((o.cls === 'SubTypeTarget') && ctx.note && params[0] && params[0].type === 'val12') { tgt = 'Pitch'; p1 = noteName(params[0].value) + ' (' + params[0].value + ')'; }
+    if (o.cls === 'MainValueTarget' && ctx.note) tgt = 'Velocity';
     if (o.cls === 'leValue1Target' && ctx.note && params[0]) { tgt = 'Pitch'; p1 = noteName(params[0].value) + ' (' + params[0].value + ')'; if (params[1]) p2 = noteName(params[1].value) + ' (' + params[1].value + ')'; }
     if (o.cls === 'leValue1Target' && ctx.cc) tgt = 'CC-Nummer';
     if (o.cls === 'leValue2Target' && ctx.note) tgt = 'Velocity';
@@ -403,7 +422,9 @@ var LE = (function () {
     var tgt = CODES.actionTargets[o.target] || ('target#' + o.target), op = CODES.operations[o.op] || ('op#' + o.op);
     var params = o.items.filter(function (x) { return typeof x !== 'number'; });
     var p1 = pval(params[0]), p2 = pval(params[1]);
-    if (o.target === 4012) { var m = params[0] && params[0].type === 'val4' ? CODES.genericOp[params[0].value] : p1; return 'Track Operation: ' + op + ' → ' + m; }
+    if (o.target === 4012) { var m = params[0] && params[0].type === 'val4' ? CODES.genericOp[params[0].value] : p1; return 'Track Operation: ' + op + ' → ' + m + ((o.op === 370 || o.op === 371) && params[1] ? ' (Slot ' + params[1].value + ')' : ''); }
+    if (o.target === 4005 && params[0]) p1 = 'Kanal ' + (params[0].value + 1);
+    if (o.target === 4006 && params[0]) p1 = CODES.eventTypes[params[0].value] || p1;
     var two = o.op === 310 || o.op === 313;
     return tgt + ' ' + op + ' ' + p1 + (two ? ' … ' + p2 : '');
   }
@@ -463,6 +484,7 @@ if (typeof module !== 'undefined') module.exports = LE;
       {id: 'position_bar', label: 'Position – Bar Range (Ticks im Takt)', type: 'integer', operators: ['between', 'not_between'], validation: {min: 0, max: 1920}},
       {id: 'position_time', label: 'Position – Cursor / Cycle', type: 'string', input: 'select', values: {x: '–'}, operators: ['before_cursor', 'beyond_cursor', 'inside_cycle', 'outside_cycle', 'exactly_cycle', 'inside_track_loop', 'inside_marker']},
       {id: 'property', label: 'Property', type: 'integer', input: 'select', values: sel(C.properties, C.propertiesInferred), operators: ['is_set', 'is_not_set']},
+      {id: 'channel', label: 'Channel (1–16)', type: 'integer', operators: NUMOPS, validation: {min: 1, max: 16}},
       {id: 'context', label: 'Context Variable', type: 'string', operators: ['equal', 'not_equal', 'greater', 'greater_or_equal', 'less', 'less_or_equal'],
         input: function (rule, name) { var h = '<select class="form-control input-sm" name="' + name + '_v">'; C.contextVars.forEach(function (n, i) { h += '<option value="' + i + '">' + n + (C.contextVarsInferred[i] ? ' 🟡' : '') + '</option>'; }); h += '</select> <input class="form-control input-sm" name="' + name + '_p2" type="number" placeholder="Param 2" style="width:90px">'; return h; },
         valueGetter: function (rule) { var $c = rule.$el.find('.rule-value-container'); return $c.find('[name$=_v]').val() + '|' + ($c.find('[name$=_p2]').val() || 0); },
@@ -509,6 +531,7 @@ if (typeof module !== 'undefined') module.exports = LE;
       case 'position_bar': return M.position(code === 207 ? 206 : 208, parseVal(a[0]), parseVal(a[1]));
       case 'position_time': return M.positionTime(code, TIME_TPL);
       case 'property': return M.property(code, parseVal(a[0]));
+      case 'channel': return M.channel(code, parseVal(a[0]) - 1, Math.max(0, parseVal(a[1]) - 1));
       case 'context': var p = String(v || '0|0').split('|'); return M.context(code, parseVal(p[0]), parseVal(p[1]));
       case 'container': return M.container(code, parseVal(a[0]));
       case 'media': return M.media(code, parseVal(a[0]));
@@ -555,6 +578,9 @@ if (typeof module !== 'undefined') module.exports = LE;
       case 'leLengthTarget': return {id: 'length', operator: op, value: two ? [v0, v1] : v0};
       case 'lePositionTarget': if (o.cond === 206 || o.cond === 208) return {id: 'position_bar', operator: o.cond === 206 ? 'between' : 'not_between', value: [v0, v1]}; return {id: 'position_time', operator: op, value: 'x'};
       case 'leFlagsTarget': return {id: 'property', operator: op, value: v0};
+      case 'leChannelTarget': return {id: 'channel', operator: op, value: two ? [v0 + 1, v1 + 1] : v0 + 1};
+      case 'SubTypeTarget': return {id: 'value1', operator: op, value: two ? [v0, v1] : String(v0)};
+      case 'MainValueTarget': return {id: 'value2', operator: op, value: two ? [v0, v1] : v0};
       case 'leContextTypeTarget': return {id: 'context', operator: op, value: ints[0] + '|' + (ints.length > 1 ? ints[1] : (objs[0] ? objs[0].value : 0))};
       case 'leContainerTypeTarget': return {id: 'container', operator: op, value: v0};
       case 'leMediaTypeTarget': return {id: 'media', operator: op, value: v0};
@@ -564,26 +590,28 @@ if (typeof module !== 'undefined') module.exports = LE;
     throw new Error('Nicht importierbar: ' + o.cls);
   }
   /* Aktionen */
-  var ATARGETS = {LE: [4002, 4003, 4006], PLE: [4012]}, OPS_VALUE = [304, 306, 307, 308, 309, 310, 311, 312], OPS_TRACK = [331, 332, 333, 334, 335, 336, 337, 338, 340, 341, 342, 343];
+  var ATARGETS = {LE: [4002, 4003, 4005, 4006], PLE: [4012]}, OPS_VALUE = [304, 306, 307, 308, 309, 310, 311, 312, 317], OPS_TRACK = [331, 332, 333, 334, 335, 336, 337, 338, 340, 341, 342, 343, 344, 371];
   function renderActions() {
     var h = '';
     actions.forEach(function (a, i) {
-      var ops = a.target === 4012 ? OPS_TRACK : a.target === 4006 ? [312] : OPS_VALUE;
+      var ops = a.target === 4012 ? OPS_TRACK : (a.target === 4006 || a.target === 4005) ? [312] : OPS_VALUE;
       h += '<tr><td><select class="form-control input-sm" data-i="' + i + '" data-f="target">' + ATARGETS[kind].map(function (t) { return '<option value="' + t + '"' + (t === a.target ? ' selected' : '') + '>' + C.actionTargets[t] + '</option>'; }).join('') + '</select></td>';
       h += '<td><select class="form-control input-sm" data-i="' + i + '" data-f="op">' + ops.map(function (o) { return '<option value="' + o + '"' + (o === a.op ? ' selected' : '') + '>' + C.operations[o] + (C.operationsInferred[o] ? ' 🟡' : '') + '</option>'; }).join('') + '</select></td>';
       if (a.target === 4012) h += '<td><select class="form-control input-sm" data-i="' + i + '" data-f="p1">' + C.genericOp.map(function (n, k) { return '<option value="' + k + '"' + (k === +a.p1 ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select></td><td></td>';
+      else if (a.target === 4005) h += '<td><input class="form-control input-sm" data-i="' + i + '" data-f="p1" value="' + a.p1 + '" style="width:70px" title="Kanal 1–16"></td><td></td>';
       else if (a.target === 4006) h += '<td><select class="form-control input-sm" data-i="' + i + '" data-f="p1">' + C.eventTypes.map(function (n, k) { return '<option value="' + k + '"' + (k === +a.p1 ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select></td><td></td>';
       else h += '<td><input class="form-control input-sm" data-i="' + i + '" data-f="p1" value="' + a.p1 + '" style="width:90px"></td><td><input class="form-control input-sm" data-i="' + i + '" data-f="p2" value="' + a.p2 + '" style="width:90px"' + (a.op === 310 || a.op === 311 ? '' : ' disabled') + '></td>';
       h += '<td><button class="btn btn-xs btn-default" data-del="' + i + '">✕</button></td></tr>';
     });
     $('#actions').html(h);
   }
-  $('#actions').on('change input', '[data-f]', function () { var a = actions[+this.dataset.i]; var f = this.dataset.f; a[f] = (f === 'target' || f === 'op') ? +this.value : this.value; if (f === 'target') { a.op = a.target === 4012 ? 331 : 312; a.p1 = a.target === 4012 ? 2 : 0; } if (this.tagName === 'SELECT') renderActions(); render(); });
+  $('#actions').on('change input', '[data-f]', function () { var a = actions[+this.dataset.i]; var f = this.dataset.f; a[f] = (f === 'target' || f === 'op') ? +this.value : this.value; if (f === 'target') { a.op = a.target === 4012 ? 331 : 312; a.p1 = a.target === 4012 ? 2 : a.target === 4005 ? 1 : 0; } if (this.tagName === 'SELECT') renderActions(); render(); });
   $('#actions').on('click', '[data-del]', function () { actions.splice(+this.dataset.del, 1); renderActions(); render(); });
   $('#addAction').on('click', function () { var t = ATARGETS[kind][0]; actions.push({target: t, op: t === 4012 ? 331 : 304, p1: t === 4012 ? 2 : 1, p2: 0}); if ($('#func').val() === '0' || $('#func').val() === '6' || $('#func').val() === '8') $('#func').val('1'); renderActions(); render(); });
   function actionToObj(a) {
     if (a.target === 4012) return M.trackOp(a.op, parseVal(a.p1));
     if (a.target === 4006) return M.actType(a.op, parseVal(a.p1));
+    if (a.target === 4005) return M.actChannel(a.op, Math.max(0, parseVal(a.p1) - 1));
     if (a.op === 307 || a.op === 308) return M.actFloat(a.target, a.op, parseVal(a.p1));
     return M.actInt(a.target, a.op, parseVal(a.p1), parseVal(a.p2));
   }
@@ -591,7 +619,7 @@ if (typeof module !== 'undefined') module.exports = LE;
   function renderFunc() { $('#func').html(Object.keys(C.functions).filter(function (k) { return kind === 'LE' || [0, 1, 6, 8].indexOf(+k) >= 0; }).map(function (k) { return '<option value="' + k + '"' + (k === '1' ? ' selected' : '') + '>' + C.functions[k] + (C.functionsInferred[k] ? ' 🟡' : '') + '</option>'; }).join('')); }
   function buildDoc() {
     var rules = $b.queryBuilder('getRules', {skip_empty: true}); if (!rules) throw new Error('Filter unvollständig oder ungültig.');
-    return {magic: 0x4000, one: 1, comment: new Uint8Array(0), actions: actions.map(actionToObj), filters: groupToTokens(rules), trailer: [0, +$('#func').val(), kind === 'PLE' ? 1 : 0, 0, 0, 0, 0]};
+    return {magic: 0x4000, one: 1, comment: new Uint8Array(0), actions: actions.map(actionToObj), filters: groupToTokens(rules), trailer: M.trailer(+$('#func').val(), kind === 'PLE')};
   }
   function render() {
     var msgs = [];
@@ -611,7 +639,7 @@ if (typeof module !== 'undefined') module.exports = LE;
       var px = LE.parseXml(text), d = LE.decode(px.bytes), k = px.root === 'Project_Logical_EditorPreset' ? 'PLE' : 'LE';
       if (k !== kind) { kind = k; $('input[name=kind][value=' + k + ']').prop('checked', true); renderFunc(); }
       actions = []; var skipped = 0;
-      d.actions.forEach(function (o) { var objs = o.items.filter(function (x) { return typeof x !== 'number'; }); if ((o.target === 4002 || o.target === 4003) && objs.length >= 2 && 'value' in objs[0]) actions.push({target: o.target, op: o.op, p1: objs[0].value, p2: objs[1].value}); else if (o.target === 4012 && objs[0]) actions.push({target: 4012, op: o.op, p1: objs[0].value, p2: 0}); else if (o.target === 4006 && objs[0]) actions.push({target: 4006, op: o.op, p1: objs[0].value, p2: 0}); else skipped++; });
+      d.actions.forEach(function (o) { var objs = o.items.filter(function (x) { return typeof x !== 'number'; }); if ((o.target === 4002 || o.target === 4003 || o.target === 4025 || o.target === 4024 || o.target === 4022) && objs.length >= 2 && 'value' in objs[0]) actions.push({target: o.target === 4025 ? 4002 : (o.target === 4024 || o.target === 4022) ? 4003 : o.target, op: o.op, p1: objs[0].value, p2: objs[1].value}); else if (o.target === 4005 && objs[0]) actions.push({target: 4005, op: o.op, p1: objs[0].value + 1, p2: 0}); else if (o.target === 4012 && objs[0]) actions.push({target: 4012, op: o.op, p1: objs[0].value, p2: 0}); else if (o.target === 4006 && objs[0]) actions.push({target: 4006, op: o.op, p1: objs[0].value, p2: 0}); else skipped++; });
       var g = tokensToGroup(d.filters.filter(function (t) { return t.type === 'token' || t.type === 'cond'; }));
       initBuilder(g); renderActions(); $('#func').val(String(d.trailer[1] != null ? d.trailer[1] : 1)); $('#presetName').val((fname || 'Import').replace(/\.xml$/i, '')); render();
       $('#importInfo').text('Geladen: ' + fname + ' (' + px.bytes.length + ' Bytes)' + (skipped ? ' – ' + skipped + ' Aktion(en) nicht abgebildet' : ''));

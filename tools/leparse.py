@@ -90,24 +90,24 @@ class Parser:
             raise ValueError(f'ungültiges Tag 0x{tag:08X} bei Offset {self.i}')
         size = self.u32(); start = self.i; end = start + size
         o = {'cls': name, 'kind': kind, 'off': off, 'ver': ver, 'bases': bases, 'size': size, 'data_off': start}
-        if name.startswith('leActionTarget'):
+        if 'ActionTarget' in name:
             o['flags16'] = self.u16(); o['op'] = self.u32(); o['target'] = self.u32()
             o['params'], o['extra'] = [], []
             while self.i < end:
                 (o['params'].append(self.obj()) if self.is_tag() else o['extra'].append(self.i32()))
-        elif name.startswith('le') and name.endswith('Target'):
+        elif name.endswith('Target') and name != 'leConditionTarget':
             o['c0'] = self.u32(); o['cond'] = self.u32(); o['c2'] = self.u32()
             o['params'], o['extra'] = [], []
             while self.i < end:
                 (o['params'].append(self.obj()) if self.is_tag() else o['extra'].append(self.i32()))
         elif name == 'leToken':
             o['token'] = self.u32()
-        elif name in self.VALUE12 and size == 12:
+        elif (name in self.VALUE12 or name.endswith('Value')) and size == 12:
             a, b_, c = self.i32(), self.i32(), self.i32()
             o['min'], o['max'] = a, b_
             o['value'] = round(f32(c), 6) if name == 'LeUFloatValue' else c
-        elif name in self.VALUE4 and size == 4:
-            v = self.i32(); o['value'] = round(f32(v), 6) if name == 'UFloatValue' else v
+        elif (name in self.VALUE4 or name.endswith('Value') or name.endswith('Values')) and size == 4:
+            v = self.i32(); o['value'] = round(f32(v), 6) if name in ('UFloatValue', 'PVelocityValue', 'UFloatDefValue') else v
         elif name == 'UStringValue':
             o['raw'] = self.b[start:end].hex()
             try:
@@ -159,8 +159,10 @@ def summarize(r):
     for o in r['filters']:
         if o['cls'] == 'leToken':
             f.append(TOK.get(o['token'], str(o['token'])))
+        elif 'cond' not in o:
+            f.append(f"[{o['cls']}?]")
         else:
-            ps, ex = o['params'], o['extra']
+            ps, ex = o.get('params', []), o.get('extra', [])
             tgt = _name('filter_target_classes', o['cls'], o['cls'])
             cond = _name('conditions', o['cond'])
             p1 = pv(ps[0]) if ps else '-'
@@ -169,7 +171,9 @@ def summarize(r):
             f.append(f"[{tgt} {cond} P1={p1} P2={p2}{x}]")
     a = []
     for o in r['actions']:
-        ps = o['params']
+        if 'op' not in o:
+            a.append(f"[{o['cls']}]"); continue
+        ps = o.get('params', [])
         a.append(f"[{_name('action_targets', o['target'])} {_name('operations', o['op'])} "
                  f"P1={pv(ps[0]) if ps else '-'} P2={pv(ps[1]) if len(ps) > 1 else '-'}]")
     fn = _name('functions', r['function']) if r['function'] is not None else 'legacy'

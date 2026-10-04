@@ -6,7 +6,19 @@ mit der sich Presets komfortabel bauen, verstehen und als `.xml` für Cubase exp
 
 ## Status
 
-Phase 2 – **HTML-Preset-Builder** – erster lauffähiger Stand (`le-tamer.html`, eine Datei, offline):
+Phase 3 – **Belege statt Annahmen** (aktuell):
+
+* **579 echte Presets** ausgewertet (Steinberg-Forum 2011–2026 inkl. Cubase 13/14/15, Factory-PLE-Presets, r-koubou, Metagrid,
+  Steinberg-Factory-LE-Presets). Ergebnis: `docs/10-belege.md` (Belegzahlen je Code) und `docs/06-preset-dateiformat.md`
+  Kapitel 13 (u. a. Umbenennungen ab Cubase 13, Trailer-Aufbau, Channel/Last-Event-Klassen, Transformer-/Input-Transformer-Presets).
+* Decoder/Encoder lesen und reproduzieren **alle 1374 Preset-Dateien byteidentisch**; neu erzeugte Presets sind byteidentisch
+  mit Factory-Presets aus Cubase 9–13 (LE und PLE).
+* Framework-Bewertung (`docs/09-framework-evaluation.md`) und Proof-of-Concept mit **jQuery QueryBuilder** als Regelbaum-Editor
+  (`prototype/poc-querybuilder.html`, gebaut aus `.src.html` + `vendor/` durch `tools/build-poc.py`).
+* Offen bleibt der **Ladetest in Cubase 15** sowie: Zeitwerte mit echtem Wert (Position Equal 5.1.1.0, Sekunden), Pre-/Post-Befehle
+  im PLE (Cubase 12+), Output Name, Secondary Value, Score-Editor-Ziele – alle in `docs/06` Kapitel 11/13 markiert.
+
+Phase 2 – **HTML-Preset-Builder** – lauffähig (`le-tamer.html`, eine Datei, offline):
 
 * Filter-/Aktionszeilen wie in Cubase, kontextsensitive Hilfe, Klartext-Vorschau, Validierung, Rezept-Bibliothek.
 * **Export** als Cubase-`.xml`; **Import** bestehender Presets per Drag & Drop (unbekannte Zeilen bleiben als Rohdaten
@@ -43,6 +55,11 @@ Phase 1 – **Wissen aufbauen** – ist abgeschlossen:
 | `docs/06-preset-dateiformat.md` | **Spezifikation des XML/Binär-Formats** inkl. Code-Tabellen und offener Fragen |
 | `docs/07-html-builder-anforderungen.md` | Anforderungen und Architektur für die HTML-Seite |
 | `docs/08-quellen.md` | Alle verwendeten Quellen |
+| `docs/09-framework-evaluation.md` | Fertige Editor-Frameworks im Vergleich, Empfehlung |
+| `docs/10-belege.md` | Belegzahlen je Code aus dem 579-Preset-Korpus (generiert) |
+| `prototype/poc-querybuilder.html` | PoC: Regelbaum-Editor mit jQuery QueryBuilder (eine Datei) |
+| `vendor/` | Eingebettete Drittanbieter-Bibliotheken (MIT), siehe `vendor/LICENSES.md` |
+| `data/time-templates.json` | Byte-Vorlagen für Cursor-/Cycle-Bedingungen aus einem Factory-Preset |
 | `tools/leparse.py` | Parser/Decoder für Preset-XML (Zusammenfassung, JSON, Baumansicht) |
 | `data/le-codes.json` | Abgeleitete Enum-Codes mit Konfidenz-Angabe |
 | `samples/` | Kleine Beispiel-Presets zum Testen des Parsers |

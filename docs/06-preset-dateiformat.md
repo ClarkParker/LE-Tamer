@@ -348,3 +348,74 @@ Bar Range / 217 Beyond Cursor** ✅. Track-Ops verifiziert: 331 Folder, 335 Mute
 
 **Zum BOM-Anhang bei Strings:** In 28 von 29 Factory-Kommentaren fehlt er, in 1 ist er da; bei `UStringValue` 3 von 13.
 Es handelt sich um zufällige Pufferreste nach dem NUL, nicht um Format. Lesen bis NUL, schreiben als `Text\0` ist korrekt.
+
+## 13. Korpus-Auswertung (579 Presets, Cubase SX bis Cubase 15) – verbindlicher Stand
+
+Quelle: 134 Anhänge aus 64 Steinberg-Forum-Threads (2011–2026, darunter Presets aus Cubase 13, 14 und 15),
+46 Factory-PLE-Presets (Upload), 20 Presets von r-koubou, 327 Metagrid-Presets, 4 Steinberg-Factory-LE-Presets.
+Belegzahlen je Code stehen in `10-belege.md`; dieses Kapitel ersetzt, wo abweichend, die Kapitel 5–8.
+
+### 13.1 Trailer – endgültig
+```
+u32 strLen, u8[strLen]   Name eines Pre-/Post-Befehls (Cubase 11: "Not set", "Edit Instrument", Makronamen) – fast immer leer (strLen 0)
+i32 function             0 Delete/Filter · 1 Transform · 2 Insert · 3 Insert Exclusive · 4 Copy · 5 Extract to Track · 6 Select · 7 Extract to Lanes 🟡 · 8 Deselect
+i32 isPLE                1 bei Project_Logical_EditorPreset, sonst 0
+i32 0
+i32 version              0 bis Cubase 11 · 0x1100 (4352) ab Cubase 12 – in allen LE-, PLE-, Transformer- und Input-Transformer-Dateien 2022–2026
+i32 0, i32 0
+```
+Das bisher als „führende 0“ beschriebene Wort ist also die Länge des Befehls-Strings. Wie Cubase 12+ die bis zu 4+4
+Pre-/Post-Befehle ablegt, ist weiter offen (keine Datei mit gesetzten Befehlen im Korpus).
+
+### 13.2 Weitere Wurzelelemente
+`TransformerPreset` (MIDI-Insert Transformer, Cubase 13) und `Input_TransformerPreset` (Track/Project Input Transformer) verwenden
+exakt dasselbe Binärformat. Einziger Unterschied: beim Input Transformer ist das zweite Header-Wort **0** statt 1.
+Transformer/Input Transformer nutzen `LeTypeValue(0..6)` (7 Typen), der LE `LeTypeValue(0..8)`.
+
+### 13.3 Umbenennungen ab Cubase 13
+Cubase 13 hat die Subtype/Main-Value-Klassen als **Unterklassen** der alten Klassen neu eingeführt – deshalb bleiben alte Presets
+ladbar, und Cubase 13–15 schreibt gemischt:
+
+| Zweck | bis Cubase 12 | ab Cubase 13 (Unterklasse von) | Parameter ab Cubase 13 |
+|---|---|---|---|
+| Filter Subtype | `leValue1Target` | `SubTypeTarget` (← leValue1Target) | `PMidiNoteValue(0..127)` bei Noten, `PControllerValue` bei CC, sonst `LeUIntValue` |
+| Filter Main Value | `leValue2Target` | `MainValueTarget` (← leValue2Target) | **`PVelocityValue` = ein float32** (4 Byte, Basen UFloatDefValue, UFloatValue, UValue) |
+| Aktion Subtype | `leActionTargetValue1` (4002) | `ActionTargetSubType` **(4025)** (← leActionTargetValue1) | `LeUIntValue` (Add …) bzw. `PControllerValue` (Set to Fixed bei CC; max 32895 in Cubase 15 = 14-Bit-CC) |
+| Aktion Main Value | `leActionTargetValue2` (4003) | `ActionTargetMainValue` **(4024)** (← leActionTargetValue2) | `PVelocityValue` float |
+| Aktion Velocity | – | `ActionTargetVelocity` **(4022)** | `PVelocityValue` float |
+
+Unverändert auch in Cubase 15 geschrieben: `leTypesTarget`, `lePositionTarget`, `leLengthTarget`, `leChannelTarget`, `leFlagsTarget`,
+`leContextTypeTarget`, alle PLE-Klassen, `leActionTargetStart/Length/Types/Channel/Name/TrackOp/Color`.
+Cubase 13–15 **lesen** beide Schreibweisen (Factory-Presets von Cubase 13 verwenden noch `leActionTargetValue1`; Forum-Berichte
+bestätigen, dass Cubase-13-Dateien in 14 laufen; Metagrid-Presets aus Cubase 9 werden 2023 unter Cubase 12/13 geteilt).
+
+### 13.4 Neu belegte Klassen
+| Klasse | Bedeutung | Layout |
+|---|---|---|
+| `leChannelTarget` | Filter **Channel** | P1/P2 `LEMidiChannelValue(0..15)`, Wert = Kanal − 1 |
+| `leActionTargetChannel` (4005) | Aktion **Channel** | P1/P2 `LEMidiChannelValue` |
+| `leHistoryTarget` | Filter **Last Event** | P1 `LeHistoryValue(0..5)` (Auswahl), P2 `LeAllroundValue(0..255)` |
+| `LeMagicNamesValue` (4 B) | Parameter 2 von *Append/Prepend* = Index der „Std. Names“ (Cubase 12+) | i32 |
+| `leActionTargetColor` P2 | `UFloatValue` (alt) oder `LeUIntValue(0..127)` (Cubase 15) | – |
+
+### 13.5 Korrekturen zu Kapitel 6–8
+* **221 = Contains Not** (Name/Color; zwei unabhängige Presets „Show Tracks containing Drum“ = alles *ohne* Drum ausblenden). 213 ist **nicht** belegt.
+* **214 = All Types** (Container/Media Type, 12 Belege).
+* **317 = Linear Change in Loop Range** (Presets „Vel_Ramp 100→25“: P1 127, P2 32).
+* **365 = Erase Before** (Muster „Append X“ + „Erase Before X“ = Spur umbenennen zu X, 35 Belege). 313 ist **nicht** belegt.
+* Name-Operationen: 326 Replace, 327 Append, 328 Prepend, 329 Generate Name, 330 Replace Search String, 365 Erase Before (Erase After/Front/End vermutlich 366–368 🟡).
+* Track-Operationen: 331 Folder, 332 Record, 333 Monitor, 334 Solo, 335 Mute, 340 Inserts Bypass, 342 Lanes Active, 343 Hide Track, **344 Time Domain**, **371 Enable Insert Slot by Number** (Parameter 2 = Slot 1..16; „Disable all inserts“-Presets für Cubase 14), 370 vermutlich Enable Send Slot 🟡; 336–338/341 🟡; 339 und 364 unbekannt.
+  Die Nummern folgen **nicht** der Menüreihenfolge (neue Operationen wurden hinten angehängt).
+* Event-Typ **6 = SysEx** (Preset „Remove CC,PC,PB,SysEx“ nutzt 2,3,5,6); 7/8 = VST 3 Event / SMF Event 🟡. **3 = Program Change** ✅.
+* Media Types zusätzlich belegt: 3 Marker; beobachtet 6, 11, 12, 13 (Tempo, Group, Effect, Device 🟡).
+* Properties: `LeFlagsValue.max` ist die Listenlänge − 1 der schreibenden Version (PLE: 1 → 2 → 6 → 7 → 8 → 9; LE Cubase 12+: 4). Cubase ignoriert den Wert beim Laden (alte Presets mit max 1 laufen in Cubase 15).
+* Context Variable 12 = Note Number in Chord (lowest = 0) ✅ (Cubase-15-Presets „Set 2nd lowest Note to CH2“ mit P2 = 1).
+* `LeDomainTypeValue` 2 = Samples ✅ (`LeTTimeDiffValue` kind 10 mit Einheitsdauer 1/48000 s).
+* Drittes Wort der Bedingungszeile: 0 (Cubase 9+), 0xCDCDCDCD in alten Factory-Dateien – Cubase ignoriert es; unsere Dateien sind sonst byteidentisch mit Factory-PLE-Presets.
+
+### 13.6 Empfehlung für den Writer
+1. Immer Trailer-Version `0x1100` schreiben (entspricht Cubase 12–15).
+2. Klassen wie Cubase 15 schreiben, wo belegt (SubTypeTarget/MainValueTarget/ActionTargetSubType/-MainValue/-Velocity mit
+   PMidiNoteValue/PControllerValue/PVelocityValue); für Operationen ohne Cubase-13-Beleg (Multiply/Divide/Random auf Main Value)
+   die bis Cubase 12 übliche Schreibweise, die Cubase 13–15 nachweislich liest. Beide Stile sind im Builder wählbar.
+3. Strings als `Text\0` ohne Pufferreste; Kommentar optional.

@@ -52,6 +52,7 @@ details summary{cursor:pointer;color:var(--muted)}
   <label class="inl">Preset-Name <input type="text" id="presetName" value="Mein Preset" style="width:220px"></label>
   <label class="inl">Kommentar <input type="text" id="comment" placeholder="optional" style="width:220px"></label>
   <label class="inl">Rezept <select id="recipes" style="width:260px"></select></label>
+  <label class="inl">Schreibstil <select id="style" title="Klassennamen wie Cubase 13–15 (SubTypeTarget, PVelocityValue …) oder wie bis Cubase 12 (leValue1Target …); beide werden von Cubase 13–15 gelesen"><option value="modern">Cubase 13+</option><option value="legacy">bis Cubase 12</option></select></label>
   <button id="btnInit" title="Alles zurücksetzen (wie Cubase-Preset „Init“)">Init</button>
 </header>
 <main>
@@ -109,21 +110,22 @@ var LE = (function () {
   var CODES = {
     tokens: {101:'(',102:')',103:'And',104:'Or'},
     functions: {0:'Delete',1:'Transform',2:'Insert',3:'Insert Exclusive',4:'Copy',5:'Extract to Track',6:'Select',7:'Extract to Lanes',8:'Deselect'},
-    functionsInferred: {3:1,7:1},
-    conditions: {200:'Equal',201:'Unequal',202:'Bigger',203:'Bigger or Equal',204:'Less',205:'Less or Equal',206:'Inside Bar Range',207:'Inside Range',208:'Outside Bar Range',209:'Outside Range',210:'Contains',211:'Property is Set',212:'Property is Not Set',213:'Contains Not',216:'Before Cursor',217:'Beyond Cursor',218:'Inside Cycle',219:'Outside Cycle',220:'Exactly Matching Cycle',221:'Inside Track Loop',222:'Inside Selected Marker'},
-    conditionsInferred: {203:1,213:1,219:1,221:1,222:1},
-    operations: {221:'(keine)',304:'Add',306:'Subtract',307:'Multiply by',308:'Divide by',309:'Round by',310:'Set Random Values Between',311:'Set Relative Random Values Between',312:'Set to Fixed Value',327:'Append',329:'Generate Name',330:'Replace Search String',331:'Folder',332:'Record',333:'Monitor',334:'Solo',335:'Mute',336:'Read',337:'Write',338:'EQ Bypass',339:'(unbekannt 339)',340:'Inserts Bypass',341:'Sends Bypass',342:'Lanes Active',343:'Hide Track',355:'Remove NoteExp'},
-    operationsInferred: {332:1,333:1,334:1,336:1,337:1,338:1,339:1,341:1},
-    actionTargets: {4000:'Position',4001:'Length',4002:'Subtype (Value 1)',4003:'Main Value (Value 2)',4006:'Type',4007:'Name',4012:'Track Operation',4013:'Trim',4014:'Set Color',4016:'NoteExp Operation'},
-    filterTargets: {leTypesTarget:'Type',leValue1Target:'Subtype (Value 1)',leValue2Target:'Main Value (Value 2)',lePositionTarget:'Position',leLengthTarget:'Length',leFlagsTarget:'Property',leContextTypeTarget:'Context Variable',leContainerTypeTarget:'Container Type',leMediaTypeTarget:'Media Type',leNameTypeTarget:'Name',leColorTypeTarget:'Color Name'},
+    functionsInferred: {7:1},
+    conditions: {200:'Equal',201:'Unequal',202:'Bigger',203:'Bigger or Equal',204:'Less',205:'Less or Equal',206:'Inside Bar Range',207:'Inside Range',208:'Outside Bar Range',209:'Outside Range',210:'Contains',211:'Property is Set',212:'Property is Not Set',214:'All Types',216:'Before Cursor',217:'Beyond Cursor',218:'Inside Cycle',219:'Outside Cycle',220:'Exactly Matching Cycle',221:'Contains Not',222:'Inside Selected Marker'},
+    conditionsInferred: {219:1,222:1},
+    operations: {221:'(keine)',304:'Add',306:'Subtract',307:'Multiply by',308:'Divide by',309:'Round by',310:'Set Random Values Between',311:'Set Relative Random Values Between',312:'Set to Fixed Value',317:'Linear Change in Loop Range',326:'Replace',327:'Append',328:'Prepend',329:'Generate Name',330:'Replace Search String',331:'Folder',332:'Record',333:'Monitor',334:'Solo',335:'Mute',336:'Read',337:'Write',338:'EQ Bypass',339:'(unbekannt 339)',340:'Inserts Bypass',341:'Sends Bypass',342:'Lanes Active',343:'Hide Track',344:'Time Domain',355:'Remove NoteExp',364:'(unbekannt 364)',365:'Erase Before',370:'Enable Send Slot by Number',371:'Enable Insert Slot by Number'},
+    operationsInferred: {336:1,337:1,338:1,339:1,341:1,364:1,370:1},
+    actionTargets: {4000:'Position',4001:'Length',4002:'Subtype (Value 1)',4003:'Main Value (Value 2)',4005:'Channel',4006:'Type',4007:'Name',4012:'Track Operation',4013:'Trim',4014:'Set Color',4016:'NoteExp Operation',4022:'Velocity',4024:'Main Value',4025:'Subtype'},
+    filterTargets: {leTypesTarget:'Type',leValue1Target:'Subtype (Value 1)',leValue2Target:'Main Value (Value 2)',SubTypeTarget:'Subtype',MainValueTarget:'Main Value',lePositionTarget:'Position',leLengthTarget:'Length',leChannelTarget:'Channel',leFlagsTarget:'Property',leHistoryTarget:'Last Event',leContextTypeTarget:'Context Variable',leContainerTypeTarget:'Container Type',leMediaTypeTarget:'Media Type',leNameTypeTarget:'Name',leColorTypeTarget:'Color Name'},
+    trailerVersion: 0x1100,
     mediaTypes: ['Audio','MIDI','Automation','Marker','Transpose','Arranger','Tempo','Signature','Chord','Scale Event','Video','Group','Effect','Device','VCA'],
-    mediaTypesInferred: {3:1,4:1,5:1,6:1,9:1,10:1,11:1,12:1,13:1,14:1},
-    eventTypes: ['Note','Poly Pressure','Controller','Program Change','Aftertouch','Pitchbend','VST 3 Event','SysEx','SMF Event'],
-    eventTypesInferred: {1:1,3:1,6:1,7:1,8:1},
+    mediaTypesInferred: {4:1,5:1,6:1,9:1,10:1,11:1,12:1,13:1,14:1},
+    eventTypes: ['Note','Poly Pressure','Controller','Program Change','Aftertouch','Pitchbend','SysEx','VST 3 Event','SMF Event'],
+    eventTypesInferred: {1:1,7:1,8:1},
     properties: ['Muted','Selected','Empty','Inside NoteExp','Is valid VST 3','Hidden','Has Track Version','Follows Chord Track','Is Disabled','Parent Object Is Selected'],
-    propertiesInferred: {4:1,8:1,9:1},
+    propertiesInferred: {4:1,9:1},
     contextVars: ['Highest Pitch','Lowest Pitch','Average Pitch','Highest Velocity','Lowest Velocity','Average Velocity','Highest CC Value','Lowest CC Value','Average CC Value','No. of Notes in Chord (Part)','No. of Voices (Part)','Position in Chord (Part)','Note Number in Chord (lowest = 0)','Position in Chord (Chord Track)','Voice','Highest in Chord from at Least n Notes','Lowest in Chord from at Least n Notes'],
-    contextVarsInferred: {1:1,2:1,4:1,5:1,6:1,7:1,8:1,9:1,10:1,11:1,12:1,15:1,16:1},
+    contextVarsInferred: {1:1,2:1,4:1,5:1,6:1,7:1,8:1,9:1,10:1,11:1,15:1,16:1},
     contextVarsNeedP2: {9:1,10:1,11:1,12:1,13:1,14:1,15:1,16:1},
     containerTypes: ['Folder Track','Track','Part','Event'],
     containerTypesInferred: {},
@@ -138,18 +140,24 @@ var LE = (function () {
     LeContainerTypeValue:['UIntValue','UValue'], LeDomainTypeValue:['UIntValue','UValue'],
     LeFlagsValue:['LeUIntValue','UIntValue','UValue'], PControllerValue:['LeUIntValue','UIntValue','UValue'],
     LeUFloatValue:['UFloatValue','UValue'], UStringValue:['UValue'],
-    LeMediaTypeValue:['UIntValue','UValue'], PMidiNoteValue:['LeUIntValue','UIntValue','UValue'],
+    LeMediaTypeValue:['UIntValue','UValue'], PMidiNoteValue:['LeUIntValue','UIntValue','UValue'], LEMidiChannelValue:['LeUIntValue','UIntValue','UValue'],
+    LeMagicNamesValue:['UIntValue','UValue'], LeHistoryValue:['LeUIntValue','UIntValue','UValue'], LeAllroundValue:['LeUIntValue','UIntValue','UValue'],
+    PVelocityValue:['UFloatDefValue','UFloatValue','UValue'],
+    SubTypeTarget:['leValue1Target','leConditionTarget','leToken','CmObject'], MainValueTarget:['leValue2Target','leConditionTarget','leToken','CmObject'],
+    ActionTargetSubType:['leActionTargetValue1','leActionBase','CmObject'], ActionTargetMainValue:['leActionTargetValue2','leActionBase','CmObject'], ActionTargetVelocity:['leActionBase','CmObject'],
     LeTTimeValue:['TTimeValue','TTimeValueBase','UValue'], LeTTimeDiffValue:['TDiffTimeValue','TTimeValueBase','UValue']
   };
   function chainFor(cls) {
     if (CHAINS[cls]) return CHAINS[cls];
-    if (cls.indexOf('leActionTarget') === 0) return ['leActionBase', 'CmObject'];
-    if (cls.indexOf('le') === 0 && /Target$/.test(cls)) return ['leConditionTarget', 'leToken', 'CmObject'];
+    if (cls.indexOf('ActionTarget') >= 0) return ['leActionBase', 'CmObject'];
+    if (/Target$/.test(cls) && cls !== 'leConditionTarget') return ['leConditionTarget', 'leToken', 'CmObject'];
     return [];
   }
-  var VALUE12 = {LeUIntValue:1, PControllerValue:1, LeFlagsValue:1, LeTypeValue:1, LeUFloatValue:1, PMidiNoteValue:1};
-  var VALUE4 = {LeContainerTypeValue:1, LeDomainTypeValue:1, LeGenericOpValue:1, LeMediaTypeValue:1, UIntValue:1, UFloatValue:1};
-  var FLOATCLS = {LeUFloatValue:1, UFloatValue:1};
+  function isActionCls(cls) { return cls.indexOf('ActionTarget') >= 0; }
+  function isCondCls(cls) { return /Target$/.test(cls) && cls !== 'leConditionTarget' && !isActionCls(cls); }
+  var VALUE12 = {LeUIntValue:1, PControllerValue:1, LeFlagsValue:1, LeTypeValue:1, LeUFloatValue:1, PMidiNoteValue:1, LEMidiChannelValue:1, LeHistoryValue:1, LeAllroundValue:1};
+  var VALUE4 = {LeContainerTypeValue:1, LeDomainTypeValue:1, LeGenericOpValue:1, LeMediaTypeValue:1, LeMagicNamesValue:1, PVelocityValue:1, UIntValue:1, UFloatValue:1};
+  var FLOATCLS = {LeUFloatValue:1, UFloatValue:1, PVelocityValue:1, UFloatDefValue:1};
 
   /* ---------- Hilfsfunktionen ---------- */
   function hexToBytes(hex) {
@@ -207,15 +215,15 @@ var LE = (function () {
     else throw new Error('Ungültiges Objekt-Tag bei Offset ' + this.i);
     var size = this.u32(), start = this.i, end = start + size;
     var o = {cls: name, kind: kind, off: off, ver: ver, bases: bases, size: size};
-    if (name.indexOf('leActionTarget') === 0) {
+    if (isActionCls(name)) {
       o.type = 'action'; o.flags16 = this.u16(); o.op = this.u32(); o.target = this.u32(); o.items = [];
       while (this.i < end) o.items.push(this.isTag() ? this.obj() : this.i32());
-    } else if (name.indexOf('le') === 0 && /Target$/.test(name)) {
+    } else if (isCondCls(name)) {
       o.type = 'cond'; o.c0 = this.u32(); o.cond = this.u32(); o.c2 = this.u32(); o.items = [];
       while (this.i < end) o.items.push(this.isTag() ? this.obj() : this.i32());
     } else if (name === 'leToken') { o.type = 'token'; o.token = this.u32(); }
-    else if (VALUE12[name] && size === 12) { o.type = 'val12'; o.min = this.i32(); o.max = this.i32(); o.value = FLOATCLS[name] ? this.f32() : this.i32(); }
-    else if (VALUE4[name] && size === 4) { o.type = 'val4'; o.value = FLOATCLS[name] ? this.f32() : this.i32(); }
+    else if ((VALUE12[name] || /Value$/.test(name)) && size === 12) { o.type = 'val12'; o.min = this.i32(); o.max = this.i32(); o.value = FLOATCLS[name] ? this.f32() : this.i32(); }
+    else if ((VALUE4[name] || /Values?$/.test(name)) && size === 4) { o.type = 'val4'; o.value = FLOATCLS[name] ? this.f32() : this.i32(); }
     else if (name === 'UStringValue') { o.type = 'str'; o.raw = this.b.slice(start, end); try { var ln = this.dv.getUint32(start, true); var sb = this.b.subarray(start + 4, start + 4 + ln); var z = sb.indexOf(0); o.str = utf8Decode(z < 0 ? sb : sb.subarray(0, z)); } catch (e) { o.str = ''; } this.i = end; }
     else { o.type = 'raw'; o.raw = this.b.slice(start, end); this.i = end; }
     if (this.i !== end) { this.errors.push('Größenabweichung in ' + name + ' (' + this.i + ' statt ' + end + ')'); this.i = end; }
@@ -301,6 +309,15 @@ var LE = (function () {
     color: function (c, text) { return cond('leColorTypeTarget', c, [{cls: 'UStringValue', type: 'str', str: text}, 0]); },
     positionTime: function (c, tpl) { return cond('lePositionTarget', c, [{cls: tpl.p1.cls, type: 'raw', raw: hexToBytes(tpl.p1.hex)}, {cls: tpl.p2.cls, type: 'raw', raw: hexToBytes(tpl.p2.hex)}]); },
     actType: function (op, t) { return {cls: 'leActionTargetTypes', type: 'action', flags16: 0, op: op, target: 4006, items: [v12('LeTypeValue', 0, 8, t), v12('LeUIntValue', 0, MAXINT, 0), 0]}; },
+    channel: function (c, ch1, ch2) { return cond('leChannelTarget', c, [v12('LEMidiChannelValue', 0, 15, ch1), v12('LEMidiChannelValue', 0, 15, ch2 || 0)]); },
+    actChannel: function (op, ch) { return action('leActionTargetChannel', 4005, op, v12('LEMidiChannelValue', 0, 15, ch), v12('LEMidiChannelValue', 0, 15, 0)); },
+    /* Cubase-13+-Schreibweise (Unterklassen) */
+    subType13: function (c, p1, p2, ctx) { var vc = ctx === 'note' ? 'PMidiNoteValue' : ctx === 'cc' ? 'PControllerValue' : 'LeUIntValue'; return cond('SubTypeTarget', c, [v12(vc, 0, 127, p1), v12(vc, 0, 127, p2 || 0)]); },
+    mainValue13: function (c, p1, p2) { return cond('MainValueTarget', c, [v4('PVelocityValue', p1), v4('PVelocityValue', p2 || 0)]); },
+    actSubType13: function (op, p1, p2, ctx) { var vc = (ctx === 'cc' && op === 312) ? 'PControllerValue' : 'LeUIntValue'; return action('ActionTargetSubType', 4025, op, v12(vc, 0, 127, p1), v12(vc, 0, 127, p2 || 0)); },
+    actMainValueFixed13: function (v) { return action('ActionTargetMainValue', 4024, 312, v4('PVelocityValue', v), v4('PVelocityValue', 0)); },
+    actVelocityFixed13: function (v) { return action('ActionTargetVelocity', 4022, 312, v4('PVelocityValue', v), v4('PVelocityValue', 0)); },
+    trailer: function (func, isPLE) { return [0, func, isPLE ? 1 : 0, 0, 0x1100, 0, 0]; },
     actInt: function (target, op, p1, p2) { var cls = target === 4002 ? 'leActionTargetValue1' : 'leActionTargetValue2'; return action(cls, target, op, v12('LeUIntValue', 0, 127, p1), v12('LeUIntValue', 0, 127, p2 || 0)); },
     actFloat: function (target, op, p1) { var cls = target === 4002 ? 'leActionTargetValue1' : 'leActionTargetValue2'; return action(cls, target, op, v12('LeUFloatValue', 0, 127, p1), v12('LeUFloatValue', 0, 127, 0)); },
     trackOp: function (op, mode) { return action('leActionTargetTrackOp', 4012, op, v4('LeGenericOpValue', mode), v12('LeUIntValue', 0, 1, 0)); }
@@ -325,6 +342,9 @@ var LE = (function () {
     if (o.cls === 'leFlagsTarget' && params[0]) p1 = CODES.properties[params[0].value] || p1;
     if (o.cls === 'leContainerTypeTarget' && params[0]) p1 = CODES.containerTypes[params[0].value] || p1;
     if (o.cls === 'leMediaTypeTarget' && params[0]) p1 = CODES.mediaTypes[params[0].value] || p1;
+    if (o.cls === 'leChannelTarget' && params[0]) { p1 = 'Kanal ' + (params[0].value + 1); if (params[1]) p2 = 'Kanal ' + (params[1].value + 1); }
+    if ((o.cls === 'SubTypeTarget') && ctx.note && params[0] && params[0].type === 'val12') { tgt = 'Pitch'; p1 = noteName(params[0].value) + ' (' + params[0].value + ')'; }
+    if (o.cls === 'MainValueTarget' && ctx.note) tgt = 'Velocity';
     if (o.cls === 'leValue1Target' && ctx.note && params[0]) { tgt = 'Pitch'; p1 = noteName(params[0].value) + ' (' + params[0].value + ')'; if (params[1]) p2 = noteName(params[1].value) + ' (' + params[1].value + ')'; }
     if (o.cls === 'leValue1Target' && ctx.cc) tgt = 'CC-Nummer';
     if (o.cls === 'leValue2Target' && ctx.note) tgt = 'Velocity';
@@ -340,7 +360,9 @@ var LE = (function () {
     var tgt = CODES.actionTargets[o.target] || ('target#' + o.target), op = CODES.operations[o.op] || ('op#' + o.op);
     var params = o.items.filter(function (x) { return typeof x !== 'number'; });
     var p1 = pval(params[0]), p2 = pval(params[1]);
-    if (o.target === 4012) { var m = params[0] && params[0].type === 'val4' ? CODES.genericOp[params[0].value] : p1; return 'Track Operation: ' + op + ' → ' + m; }
+    if (o.target === 4012) { var m = params[0] && params[0].type === 'val4' ? CODES.genericOp[params[0].value] : p1; return 'Track Operation: ' + op + ' → ' + m + ((o.op === 370 || o.op === 371) && params[1] ? ' (Slot ' + params[1].value + ')' : ''); }
+    if (o.target === 4005 && params[0]) p1 = 'Kanal ' + (params[0].value + 1);
+    if (o.target === 4006 && params[0]) p1 = CODES.eventTypes[params[0].value] || p1;
     var two = o.op === 310 || o.op === 313;
     return tgt + ' ' + op + ' ' + p1 + (two ? ' … ' + p2 : '');
   }
@@ -377,13 +399,14 @@ if (typeof module !== 'undefined') module.exports = LE;
     value2:    {label: 'Main Value (Value 2 / Velocity / CC-Wert)', conds: [200, 201, 202, 203, 204, 205, 207, 209], p1: 'num127'},
     position:  {label: 'Position (Bar Range in Ticks)', conds: [206, 208],                              p1: 'ticks'},
     property:  {label: 'Property',                    conds: [211, 212],                                p1: 'property'},
+    channel:   {label: 'Channel (1–16)',              conds: [200, 201, 202, 203, 204, 205, 207, 209],  p1: 'channel'},
     context:   {label: 'Context Variable',            conds: [200, 201, 202, 203, 204, 205],            p1: 'contextVar'},
     container: {label: 'Container Type',              conds: [200, 201],                                p1: 'containerType'},
     name:      {label: 'Name',                        conds: [200, 210, 213],                           p1: 'text'}
   };
-  var TARGETS = {LE: ['type', 'value1', 'value2', 'position', 'property', 'context'], PLE: ['container', 'name', 'property']};
-  var ATARGETS = {LE: [4002, 4003], PLE: [4012]};
-  var OPS_VALUE = [304, 306, 307, 308, 309, 310, 312, 313], OPS_TRACK = [331, 332, 333, 334, 335, 336, 337, 338, 339, 340, 341, 342, 343];
+  var TARGETS = {LE: ['type', 'value1', 'value2', 'channel', 'position', 'property', 'context'], PLE: ['container', 'name', 'property']};
+  var ATARGETS = {LE: [4002, 4003, 4005, 4006], PLE: [4012]};
+  var OPS_VALUE = [304, 306, 307, 308, 309, 310, 311, 312, 317], OPS_TRACK = [331, 332, 333, 334, 335, 336, 337, 338, 340, 341, 342, 343, 344, 371];
   var FUNC_USES_ACTIONS = {1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 7: 1};
   var HELP = {
     kind: 'LE = MIDI-Events in ausgewählten Parts (MIDI > Logical Editor). PLE = Spuren/Parts/Events im Projektfenster (Project > Project Logical Editor). PLE-Unterstützung ist experimentell: nur Container Type, Name, Property und Track Operation.',
@@ -398,6 +421,8 @@ if (typeof module !== 'undefined') module.exports = LE;
     target_value2: 'Main Value (früher Value 2): bei Noten die Velocity, bei Controllern der Wert, bei Pitchbend der Grobanteil. Nicht genutzt bei Program Change/Aftertouch.',
     target_position: 'Nur Inside/Outside Bar Range: Zone innerhalb jedes Taktes in Ticks (480 pro Viertel, 1920 = ein 4/4-Takt). 0–100 = „auf der Eins“, 480 = Zwei, 960 = Drei, 1440 = Vier. Absolute Positionen/Cursor/Cycle brauchen eingebettete Tempo-Daten und sind noch nicht unterstützt.',
     target_property: 'Cubase-Eigenschaft des Events: Muted, Selected … Bedingung „Property is Set“ / „is Not Set“. Mit „Selected“ lassen sich Presets auf die aktuelle Auswahl beschränken.',
+    target_channel: 'MIDI-Kanal 1–16 (intern 0–15 gespeichert). Nützlich nach Import von Type-0-MIDI-Files oder Multi-Kanal-Aufnahmen.',
+    style: 'Cubase 13+ schreibt für Subtype/Main Value die neuen Unterklassen (SubTypeTarget, MainValueTarget, ActionTargetSubType …, Velocity als Float). „bis Cubase 12“ erzeugt die ältere Schreibweise, die Cubase 13–15 ebenfalls lädt (Factory-Presets, Forum-Belege). Beide Varianten sind byteidentisch mit echten Cubase-Dateien geprüft.',
     target_context: 'Akkord-/Kontextanalyse: höchste/tiefste Note, Velocity, Anzahl Noten im Akkord, Stimme (Voice) … Eine Note gehört zu einem Akkord, wenn mindestens zwei weitere gleichzeitig klingen. Parameter 2 nur bei den Varianten mit „n“/Position/Voice.',
     target_container: 'PLE: Folder Track, Track, Part oder Event. Factory-Presets kombinieren meist Container Type mit Name oder Property.',
     target_name: 'PLE: Name der Spur/des Parts. Equal = exakt, Contains = enthält Text, Contains Not = enthält nicht.',
@@ -414,7 +439,8 @@ if (typeof module !== 'undefined') module.exports = LE;
   };
 
   var model = freshModel();
-  function freshModel() { return {kind: 'LE', name: 'Mein Preset', comment: '', func: 1, filters: [{lb: 0, target: 'type', cond: 200, p1: 0, p2: 0, rb: 0, bool: 103}], actions: []}; }
+  function freshModel() { return {kind: 'LE', style: 'modern', name: 'Mein Preset', comment: '', func: 1, filters: [{lb: 0, target: 'type', cond: 200, p1: 0, p2: 0, rb: 0, bool: 103}], actions: []}; }
+  function ctxOf(m) { var t = m.filters.filter(function (r) { return r.target === 'type'; }).map(function (r) { return +r.p1; }); return t.length === 1 ? (t[0] === 0 ? 'note' : t[0] === 2 ? 'cc' : '') : ''; }
 
   /* ---------- Modell → Dokument ---------- */
   function parseNum(v, allowNote) {
@@ -427,8 +453,9 @@ if (typeof module !== 'undefined') module.exports = LE;
     var M = LE.make;
     switch (r.target) {
       case 'type': return M.type(r.cond, parseNum(r.p1));
-      case 'value1': return M.value1(r.cond, parseNum(r.p1, true), parseNum(r.p2, true));
-      case 'value2': return M.value2(r.cond, parseNum(r.p1), parseNum(r.p2));
+      case 'value1': return model.style === 'modern' ? M.subType13(r.cond, parseNum(r.p1, true), parseNum(r.p2, true), ctxOf(model)) : M.value1(r.cond, parseNum(r.p1, true), parseNum(r.p2, true));
+      case 'value2': return model.style === 'modern' ? M.mainValue13(r.cond, parseNum(r.p1), parseNum(r.p2)) : M.value2(r.cond, parseNum(r.p1), parseNum(r.p2));
+      case 'channel': return M.channel(r.cond, parseNum(r.p1) - 1, Math.max(0, parseNum(r.p2) - 1));
       case 'position': return M.position(r.cond, parseNum(r.p1), parseNum(r.p2));
       case 'property': return M.property(r.cond, parseNum(r.p1));
       case 'context': return M.context(r.cond, parseNum(r.p1), parseNum(r.p2));
@@ -438,10 +465,18 @@ if (typeof module !== 'undefined') module.exports = LE;
     }
   }
   function rowToAction(r) {
+    var M = LE.make;
     if (r.target === 'raw') return r.raw;
-    if (r.target === 4012) return LE.make.trackOp(r.op, parseNum(r.p1));
-    if (r.op === 307 || r.op === 308) return LE.make.actFloat(r.target, r.op, parseNum(r.p1));
-    return LE.make.actInt(r.target, r.op, parseNum(r.p1, r.target === 4002), parseNum(r.p2, r.target === 4002));
+    if (r.target === 4012) return M.trackOp(r.op, parseNum(r.p1));
+    if (r.target === 4005) return M.actChannel(r.op, Math.max(0, parseNum(r.p1) - 1));
+    if (r.target === 4006) return M.actType(r.op, parseNum(r.p1));
+    if (model.style === 'modern') {
+      var ctx = ctxOf(model);
+      if (r.target === 4002 && r.op !== 307 && r.op !== 308 && r.op !== 309 && r.op !== 317) return M.actSubType13(r.op, parseNum(r.p1, true), parseNum(r.p2, true), ctx);
+      if (r.target === 4003 && r.op === 312) return ctx === 'note' ? M.actVelocityFixed13(parseNum(r.p1)) : M.actMainValueFixed13(parseNum(r.p1));
+    }
+    if (r.op === 307 || r.op === 308) return M.actFloat(r.target, r.op, parseNum(r.p1));
+    return M.actInt(r.target, r.op, parseNum(r.p1, r.target === 4002), parseNum(r.p2, r.target === 4002));
   }
   function buildDoc(m) {
     var filters = [LE.tok(101)];
@@ -453,7 +488,7 @@ if (typeof module !== 'undefined') module.exports = LE;
     });
     filters.push(LE.tok(102));
     var cb = m.comment ? LE.utf8Encode(m.comment) : null, comment = new Uint8Array(cb ? cb.length + 1 : 0); if (cb) comment.set(cb);
-    return {magic: 0x4000, one: 1, comment: comment, actions: m.actions.map(rowToAction), filters: filters, trailer: [0, m.func, m.kind === 'PLE' ? 1 : 0, 0, 0, 0, 0]};
+    return {magic: 0x4000, one: 1, comment: comment, actions: m.actions.map(rowToAction), filters: filters, trailer: LE.make.trailer(m.func, m.kind === 'PLE')};
   }
 
   /* ---------- Dokument → Modell (Import) ---------- */
@@ -463,7 +498,8 @@ if (typeof module !== 'undefined') module.exports = LE;
     var row = {lb: 0, rb: 0, bool: 103, cond: o.cond, p1: 0, p2: 0, target: 'raw', raw: o};
     var known = TDEF;
     if (o.cls === 'leTypesTarget' && isV12(objs[0], 'LeTypeValue') && known.type.conds.indexOf(o.cond) >= 0) { row.target = 'type'; row.p1 = objs[0].value; }
-    else if ((o.cls === 'leValue1Target' || o.cls === 'leValue2Target') && isV12(objs[0]) && isV12(objs[1]) && known.value1.conds.indexOf(o.cond) >= 0) { row.target = o.cls === 'leValue1Target' ? 'value1' : 'value2'; row.p1 = objs[0].value; row.p2 = objs[1].value; }
+    else if ((o.cls === 'leValue1Target' || o.cls === 'leValue2Target' || o.cls === 'SubTypeTarget' || o.cls === 'MainValueTarget') && objs.length >= 2 && 'value' in objs[0] && 'value' in objs[1] && known.value1.conds.indexOf(o.cond) >= 0) { row.target = (o.cls === 'leValue1Target' || o.cls === 'SubTypeTarget') ? 'value1' : 'value2'; row.p1 = objs[0].value; row.p2 = objs[1].value; }
+    else if (o.cls === 'leChannelTarget' && isV12(objs[0]) && isV12(objs[1]) && known.channel.conds.indexOf(o.cond) >= 0) { row.target = 'channel'; row.p1 = objs[0].value + 1; row.p2 = objs[1].value + 1; }
     else if (o.cls === 'lePositionTarget' && isV12(objs[0], 'LeUIntValue') && isV12(objs[1], 'LeUIntValue') && (o.cond === 206 || o.cond === 208)) { row.target = 'position'; row.p1 = objs[0].value; row.p2 = objs[1].value; }
     else if (o.cls === 'leFlagsTarget' && isV12(objs[0], 'LeFlagsValue') && (o.cond === 211 || o.cond === 212)) { row.target = 'property'; row.p1 = objs[0].value; }
     else if (o.cls === 'leContextTypeTarget' && ints.length >= 1 && known.context.conds.indexOf(o.cond) >= 0) { row.target = 'context'; row.p1 = ints[0]; row.p2 = ints.length > 1 ? ints[1] : (isV12(objs[0]) ? objs[0].value : 0); }
@@ -475,12 +511,15 @@ if (typeof module !== 'undefined') module.exports = LE;
   function actionToRow(o) {
     var objs = o.items.filter(function (x) { return typeof x !== 'number'; });
     var row = {target: 'raw', op: o.op, p1: 0, p2: 0, raw: o};
-    if ((o.target === 4002 || o.target === 4003) && OPS_VALUE.indexOf(o.op) >= 0 && objs.length === 2 && (isV12(objs[0]) || objs[0].type === 'val4')) { row.target = o.target; row.p1 = objs[0].value; row.p2 = objs[1].value; delete row.raw; }
+    if ((o.target === 4002 || o.target === 4003 || o.target === 4025 || o.target === 4024 || o.target === 4022) && OPS_VALUE.indexOf(o.op) >= 0 && objs.length === 2 && (isV12(objs[0]) || objs[0].type === 'val4')) { row.target = o.target === 4025 ? 4002 : (o.target === 4024 || o.target === 4022) ? 4003 : o.target; row.p1 = objs[0].value; row.p2 = objs[1].value; delete row.raw; }
+    else if (o.target === 4005 && isV12(objs[0])) { row.target = 4005; row.op = o.op; row.p1 = objs[0].value + 1; row.p2 = 0; delete row.raw; }
+    else if (o.target === 4006 && isV12(objs[0])) { row.target = 4006; row.op = o.op; row.p1 = objs[0].value; row.p2 = 0; delete row.raw; }
     else if (o.target === 4012 && objs[0] && objs[0].type === 'val4') { row.target = 4012; row.p1 = objs[0].value; delete row.raw; }
     return row;
   }
   function docToModel(d, root, name) {
-    var m = {kind: root === 'Project_Logical_EditorPreset' ? 'PLE' : 'LE', name: name, comment: LE.commentText(d), func: d.trailer.length > 1 ? d.trailer[1] : 1, filters: [], actions: d.actions.map(actionToRow)};
+    var usesNew = JSON.stringify(d.filters.concat(d.actions)).indexOf('"SubTypeTarget"') >= 0 || JSON.stringify(d.actions).indexOf('ActionTarget') >= 0;
+    var m = {kind: root === 'Project_Logical_EditorPreset' ? 'PLE' : 'LE', style: usesNew ? 'modern' : 'legacy', name: name, comment: LE.commentText(d), func: d.trailer.length > 1 ? d.trailer[1] : 1, filters: [], actions: d.actions.map(actionToRow)};
     var toks = d.filters.slice();
     // äußeres Klammerpaar entfernen, falls es den Gesamtausdruck umschließt
     if (toks.length >= 2 && toks[0].type === 'token' && toks[0].token === 101 && toks[toks.length - 1].type === 'token' && toks[toks.length - 1].token === 102) {
@@ -510,6 +549,7 @@ if (typeof module !== 'undefined') module.exports = LE;
       case 'contextVar': return selectHtml(a, C.contextVars.map(function (n, k) { return opt(k, n, r.p1, C.contextVarsInferred[k]); }));
       case 'containerType': return selectHtml(a, C.containerTypes.map(function (n, k) { return opt(k, n, r.p1, C.containerTypesInferred[k]); }));
       case 'text': return '<input type="text" ' + a + ' value="' + esc(r.p1) + '">';
+      case 'channel': return '<input type="text" ' + a + ' value="' + esc(r.p1) + '" title="Kanal 1–16" style="width:70px">';
       case 'ticks': return '<input type="text" ' + a + ' value="' + esc(r.p1) + '" title="Ticks 0–1920" style="width:90px">';
       default: return '<input type="text" ' + a + ' value="' + esc(r.p1) + '" style="width:90px">';
     }
@@ -541,10 +581,12 @@ if (typeof module !== 'undefined') module.exports = LE;
     model.actions.forEach(function (r, i) {
       if (r.target === 'raw') { html += '<tr class="rawrow"><td colspan="4">Rohdaten: ' + esc(r.raw.cls) + ' (op ' + esc(r.raw.op) + ', Ziel ' + esc(r.raw.target) + ') – nicht editierbar</td>'; }
       else {
-        var ops = r.target === 4012 ? OPS_TRACK : OPS_VALUE, isFloat = r.op === 307 || r.op === 308, two = r.op === 310 || r.op === 313;
+        var ops = r.target === 4012 ? OPS_TRACK : (r.target === 4005 || r.target === 4006) ? [312] : OPS_VALUE, isFloat = r.op === 307 || r.op === 308, two = r.op === 310 || r.op === 311 || r.op === 317;
         html += '<tr><td>' + selectHtml('data-i="' + i + '" data-f="target" data-h="atarget"', ATARGETS[model.kind].map(function (t) { return opt(t, C.actionTargets[t], r.target); })) + '</td>';
         html += '<td>' + selectHtml('data-i="' + i + '" data-f="op" data-h="aop"', ops.map(function (o) { return opt(o, C.operations[o], r.op, C.operationsInferred[o]); })) + '</td>';
         if (r.target === 4012) html += '<td>' + selectHtml('data-i="' + i + '" data-f="p1" data-h="ap1"', C.genericOp.map(function (n, k) { return opt(k, n, r.p1, C.genericOpInferred[k]); })) + '</td><td><input type="text" disabled value=""></td>';
+        else if (r.target === 4006) html += '<td>' + selectHtml('data-i="' + i + '" data-f="p1" data-h="ap1"', C.eventTypes.map(function (n, k) { return opt(k, n, r.p1, C.eventTypesInferred[k]); })) + '</td><td><input type="text" disabled value=""></td>';
+        else if (r.target === 4005) html += '<td><input type="text" data-i="' + i + '" data-f="p1" data-h="ap1" value="' + esc(r.p1) + '" style="width:70px" title="Kanal 1–16"></td><td><input type="text" disabled value=""></td>';
         else html += '<td><input type="text" data-i="' + i + '" data-f="p1" data-h="ap1" value="' + esc(r.p1) + '" style="width:90px" placeholder="' + (isFloat ? 'z. B. 1.1' : '0–127') + '"></td><td><input type="text" data-i="' + i + '" data-f="p2" data-h="ap2" value="' + esc(r.p2) + '" style="width:90px"' + (two ? '' : ' disabled') + '></td>';
       }
       html += '<td class="row-tools"><button class="icon" data-act="aup" data-i="' + i + '">↑</button> <button class="icon" data-act="adown" data-i="' + i + '">↓</button> <button class="icon" data-act="adel" data-i="' + i + '">✕</button></td></tr>';
@@ -558,7 +600,7 @@ if (typeof module !== 'undefined') module.exports = LE;
   }
   function renderHeader() {
     document.querySelectorAll('input[name=kind]').forEach(function (r) { r.checked = r.value === model.kind; });
-    $('#presetName').value = model.name; $('#comment').value = model.comment;
+    $('#presetName').value = model.name; $('#comment').value = model.comment; $('#style').value = model.style || 'modern';
     var win = model.kind === 'PLE' ? 'Project Logical Editor' : 'Logical Edit';
     $('#pathInfo').innerHTML = '<b>Windows:</b> <span class="kbd">%USERPROFILE%\\Documents\\Steinberg\\Cubase 15\\User Presets\\' + win + '\\</span><br><b>macOS:</b> <span class="kbd">~/Documents/Steinberg/Cubase 15/User Presets/' + win + '/</span><br><span class="muted">Im Preset-Browser „Show User Presets Location“ zeigt den exakten Ordner. Unterordner = Kategorie.</span>';
   }
@@ -584,7 +626,8 @@ if (typeof module !== 'undefined') module.exports = LE;
     if (!FUNC_USES_ACTIONS[model.func] && model.actions.length) msgs.push(['info', 'Aktionen werden bei „' + C.functions[model.func] + '“ ignoriert.']);
     if (C.functionsInferred[model.func]) msgs.push(['warn', 'Funktions-Code für „' + C.functions[model.func] + '“ ist 🟡 unverifiziert.']);
     model.actions.forEach(function (r, i) { if (C.operationsInferred[r.op]) msgs.push(['warn', 'Aktion ' + (i + 1) + ': Operation „' + C.operations[r.op] + '“ ist 🟡 unverifiziert.']); });
-    if (model.kind === 'PLE') msgs.push(['info', 'PLE-Export ist experimentell (Trailer-Flag und Track-Operation-Codes teils unverifiziert).']);
+    if (model.kind === 'PLE') msgs.push(['info', 'PLE-Export: Container/Name/Property/Track-Operation sind byteidentisch mit Factory-Presets geprüft; Name-/Farb-Aktionen folgen.']);
+    model.actions.forEach(function (r, i) { if (r.target === 4012 && (r.op === 370 || r.op === 371)) msgs.push(['info', 'Aktion ' + (i + 1) + ': Slot-Nummer (Parameter 2) wird in dieser Oberfläche noch nicht gesetzt (Standard 1).']); });
     $('#msgs').innerHTML = msgs.map(function (m) { return '<li class="' + m[0] + '">' + esc(m[1]) + '</li>'; }).join('');
     var fname = (model.name || 'Preset').replace(/[\\/:*?"<>|]/g, '_') + '.xml';
     $('#sizeInfo').textContent = bytes.length + ' Bytes Binärdaten · Dateiname: ' + fname + (/[^\x20-\x7E]/.test(fname) ? ' (bei Umlauten ggf. nach dem Download umbenennen)' : '');
@@ -605,7 +648,7 @@ if (typeof module !== 'undefined') module.exports = LE;
     var row = isAction ? model.actions[i] : model.filters[i]; if (!row) return;
     var v = t.value;
     if (f === 'target' && !isAction) { row.target = v; row.cond = TDEF[v].conds[0]; row.p1 = TDEF[v].p1 === 'text' ? '' : 0; row.p2 = 0; }
-    else if (f === 'target' && isAction) { row.target = +v; row.op = row.target === 4012 ? 331 : 304; row.p1 = 0; row.p2 = 0; }
+    else if (f === 'target' && isAction) { row.target = +v; row.op = row.target === 4012 ? 331 : (row.target === 4005 || row.target === 4006) ? 312 : 304; row.p1 = row.target === 4005 ? 1 : 0; row.p2 = 0; }
     else if (f === 'cond' || f === 'op' || f === 'bool' || f === 'lb' || f === 'rb') row[f] = +v;
     else if (f === 'p1' && (t.tagName === 'SELECT')) row.p1 = +v;
     else row[f] = v;
@@ -629,6 +672,7 @@ if (typeof module !== 'undefined') module.exports = LE;
   $('#comment').oninput = function () { model.comment = this.value; renderPreview(); };
   document.querySelectorAll('input[name=kind]').forEach(function (r) { r.onchange = function () { if (!this.checked) return; var nk = this.value; if (nk !== model.kind) { var keep = model.name; model = freshModel(); model.kind = nk; model.name = keep; if (nk === 'PLE') { model.filters = [{lb: 0, target: 'container', cond: 200, p1: 1, p2: 0, rb: 0, bool: 103}]; } renderAll(); } }; });
   $('#btnInit').onclick = function () { model = freshModel(); renderAll(); };
+  $('#style').onchange = function () { model.style = this.value; renderPreview(); };
   $('#showHex').onchange = function () { $('#hex').style.display = this.checked ? 'block' : 'none'; renderPreview(); };
   $('#btnCopyHex').onclick = function () { if (lastBytes) navigator.clipboard.writeText(LE.bytesToHex(lastBytes)); };
   $('#btnExport').onclick = function () {
@@ -674,6 +718,8 @@ if (typeof module !== 'undefined') module.exports = LE;
     {name: 'Gemutete Noten löschen', m: {kind: 'LE', func: 0, filters: [{target: 'property', cond: 211, p1: 0}], actions: []}},
     {name: 'Höchste Note jedes Akkords auswählen', m: {kind: 'LE', func: 6, filters: [{target: 'type', cond: 200, p1: 0, bool: 103}, {target: 'context', cond: 203, p1: 15, p2: 3}], actions: []}},
     {name: 'Alt-Stimme extrahieren (Voice = 1)', m: {kind: 'LE', func: 5, filters: [{target: 'type', cond: 200, p1: 0, bool: 103}, {target: 'context', cond: 200, p1: 14, p2: 1}], actions: []}},
+    {name: 'Alle Events auf Kanal 1 → Kanal 2', m: {kind: 'LE', func: 1, filters: [{target: 'channel', cond: 200, p1: 1}], actions: [{target: 4005, op: 312, p1: 2}]}},
+    {name: 'Aftertouch → CC1 (Typ ändern, Subtype = 1)', m: {kind: 'LE', func: 1, filters: [{target: 'type', cond: 200, p1: 4}], actions: [{target: 4006, op: 312, p1: 2}, {target: 4002, op: 312, p1: 1}]}},
     {name: 'PLE: Alle Folder öffnen', m: {kind: 'PLE', func: 1, filters: [{target: 'container', cond: 200, p1: 0}], actions: [{target: 4012, op: 331, p1: 0}]}},
     {name: 'PLE: Alle sichtbaren Folder öffnen (Factory-Stil)', m: {kind: 'PLE', func: 1, filters: [{target: 'container', cond: 200, p1: 0, bool: 103}, {target: 'property', cond: 212, p1: 5}], actions: [{target: 4012, op: 331, p1: 0}]}},
     {name: 'PLE: Spuren mit „Perc“ im Namen auswählen', m: {kind: 'PLE', func: 6, filters: [{target: 'container', cond: 200, p1: 1, bool: 103}, {target: 'name', cond: 210, p1: 'Perc'}], actions: []}}

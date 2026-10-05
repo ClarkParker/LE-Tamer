@@ -11,6 +11,7 @@
 --r:16px;--rs:10px;--sh:0 10px 30px rgba(0,0,0,.35),0 1px 0 rgba(255,255,255,.05) inset;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 --font:system-ui,-apple-system,"Segoe UI",Roboto,Inter,sans-serif}
 *{box-sizing:border-box}
+:root{color-scheme:dark}
 html,body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--font);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
 body{background:radial-gradient(1200px 600px at 15% -10%,#13263a 0%,transparent 60%),radial-gradient(900px 500px at 110% 10%,#1b1536 0%,transparent 55%),var(--bg);min-height:100vh}
 [v-cloak]{display:none}
@@ -25,7 +26,7 @@ svg.ic{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;strok
 .hidden{display:none!important}
 
 /* Kopf */
-.top{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);background:rgba(10,14,22,.72);border-bottom:1px solid var(--line)}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;backdrop-filter:blur(14px);background:rgba(10,14,22,.72);border-bottom:1px solid var(--line)}
 .top .in{max-width:1480px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
 .logo{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px}
 .logo .mark{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--acc),#a78bfa);display:grid;place-items:center;color:#06131a;box-shadow:0 4px 14px rgba(34,211,238,.35)}
@@ -198,7 +199,7 @@ select.sel option{background:#121a28}
 .btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
 .btn.sm{padding:7px 12px;font-size:13px;border-radius:9px}
 .navbar{position:fixed;bottom:0;left:0;right:0;z-index:40;backdrop-filter:blur(14px);background:rgba(10,14,22,.78);border-top:1px solid var(--line)}
-.navbar .in{max-width:1480px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:12px}
+.navbar .in{max-width:1480px;margin:0 auto;padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:12px}
 .navbar .in .sp{flex:1;color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* Schritt 4 */
@@ -1398,9 +1399,19 @@ var Root = {
     setFunc: function (code) { S.func = code; if (USES_ACTIONS[code] && !S.actions.length && S.intent === 'velocity') S.actions.push(mkAction('velocity')); },
     exportFile: function () {
       if (this.errors.length) return;
-      var xml = LE.toXml(this.tool.root, this.built.bytes, 1), blob = new Blob([xml], {type: 'application/xml'}), a = document.createElement('a');
-      a.href = URL.createObjectURL(blob); a.download = this.fileName; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
-      toast('Gespeichert: ' + this.fileName + ' → in den Preset-Ordner kopieren');
+      var xml = LE.toXml(this.tool.root, this.built.bytes, 1), name = this.fileName;
+      if (window.claude && typeof window.claude.use === 'function') {           // eingebettet im claude.ai-Viewer: Datei über die Plattform anbieten
+        window.claude.use('downloads').then(function (dl) {
+          if (!dl) { toast('Speichern ist in dieser Vorschau nicht möglich – bitte die Datei le-tamer-studio.html lokal öffnen.'); return; }
+          var zipName = name.replace(/\.xml$/i, '') + '.zip';
+          dl.save({filename: zipName, data: makeZip([{name: name, data: LE.utf8Encode(xml)}])}).then(function () { toast('Gespeichert: ' + zipName + ' – entpacken und die .xml in den Preset-Ordner legen'); },
+            function (e) { var c = e && e.code; if (c === 'declined') return; toast(c === 'unavailable' || c === 'not_granted' ? 'Speichern ist in dieser Ansicht nicht erlaubt.' : 'Speichern fehlgeschlagen (' + (c || 'Fehler') + ').'); });
+        });
+        return;
+      }
+      var blob = new Blob([xml], {type: 'application/xml'}), a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+      toast('Gespeichert: ' + name + ' → in den Preset-Ordner kopieren');
     },
     copyHex: function () { this.copyText(LE.bytesToHex(this.built.bytes)); },
     copyText: function (t) { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function () { toast('Kopiert'); }, function () { toast('Kopieren nicht möglich'); }); else toast('Kopieren nicht möglich'); },
@@ -1421,9 +1432,25 @@ var Root = {
   }
 };
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+/* Minimaler ZIP-Schreiber (Methode "stored", UTF-8-Namen) für die Plattform-Speicherung */
+var CRC_T = (function () { var t = new Uint32Array(256); for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = c & 1 ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[n] = c >>> 0; } return t; })();
+function crc32(b) { var c = 0xFFFFFFFF; for (var i = 0; i < b.length; i++) c = CRC_T[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function makeZip(files) {
+  var parts = [], central = [], off = 0, enc = new TextEncoder(), d = new Date();
+  var dt = ((d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1)) & 0xFFFF, dd = (((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()) & 0xFFFF;
+  files.forEach(function (f) {
+    var nm = enc.encode(f.name), data = f.data, crc = crc32(data);
+    var lh = new DataView(new ArrayBuffer(30)); lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true); lh.setUint16(10, dt, true); lh.setUint16(12, dd, true); lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, nm.length, true); lh.setUint16(28, 0, true);
+    var ch = new DataView(new ArrayBuffer(46)); ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true); ch.setUint16(12, dt, true); ch.setUint16(14, dd, true); ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, nm.length, true); ch.setUint16(30, 0, true); ch.setUint16(32, 0, true); ch.setUint16(34, 0, true); ch.setUint16(36, 0, true); ch.setUint32(38, 0, true); ch.setUint32(42, off, true);
+    parts.push(new Uint8Array(lh.buffer), nm, data); central.push(new Uint8Array(ch.buffer), nm); off += 30 + nm.length + data.length;
+  });
+  var cd = central.reduce(function (n, x) { return n + x.length; }, 0), e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(4, 0, true); e.setUint16(6, 0, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, cd, true); e.setUint32(16, off, true); e.setUint16(20, 0, true);
+  return new Blob(parts.concat(central, [new Uint8Array(e.buffer)]), {type: 'application/zip'});
+}
 Object.keys(Root).forEach(function (k) { app._component[k] = Root[k]; });
 app.mount('#app');
-window.STUDIO = {S: S, buildDoc: buildDoc, docToState: docToState, RECIPES: RECIPES, mkChip: mkChip, mkGroup: mkGroup, mkAction: mkAction, CHIPDEF: CHIPDEF, ACTDEF: ACTDEF};
+window.STUDIO = {S: S, buildDoc: buildDoc, docToState: docToState, RECIPES: RECIPES, mkChip: mkChip, mkGroup: mkGroup, mkAction: mkAction, CHIPDEF: CHIPDEF, ACTDEF: ACTDEF, makeZip: makeZip};
 })();
 </script>
 </body>

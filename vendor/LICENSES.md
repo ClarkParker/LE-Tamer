@@ -1,4 +1,4 @@
-# Drittanbieter-Bibliotheken (alle MIT-Lizenz)
+# Drittanbieter-Bibliotheken
 
 | Datei | Projekt | Version | Lizenz |
 |---|---|---|---|
@@ -6,8 +6,9 @@
 | `query-builder-2.7.0.standalone.min.js`, `…default.min.css`, `…de.js` | jQuery QueryBuilder (Damien "Mistic" Sorel) | 2.7.0 | MIT |
 | `bootstrap-3.4.1.min.css` | Bootstrap (Twitter, Inc.) | 3.4.1 | MIT |
 
-Die Dateien werden von `tools/build-poc.py` unverändert in `prototype/poc-querybuilder.html` eingebettet.
-| `vue-3.5.13.global.prod.js` | Vue.js (Evan You) | 3.5.13 | MIT (`LICENSE-vue.txt`) |
-| `sortablejs-1.15.6.min.js` | SortableJS (Lebedev Konstantin) | 1.15.6 | MIT (`LICENSE-sortablejs.txt`) |
+Diese Dateien werden von `tools/build-poc.py` unverändert in `prototype/poc-querybuilder.html` eingebettet.
 
-Vue und SortableJS werden von `tools/build-studio.py` in `le-tamer-studio.html` eingebettet.
+**LE-Tamer Studio** bezieht seine Bibliotheken (Vue, Nuxt UI, Reka UI, Tailwind CSS, SortableJS, Lucide-Icons, Schriften
+Instrument Sans und IBM Plex Mono) über `studio/package.json` mit festen Versionen. Beim Bauen erzeugt `studio/vite.config.mjs`
+die vollständige Liste der tatsächlich eingebetteten Pakete samt Lizenztexten; `studio/scripts/pack.mjs` hängt sie als Kommentar
+an `le-tamer-studio.html` an. Lizenzen: MIT, ISC (Lucide), Apache-2.0 (fuse.js, @internationalized/number), OFL-1.1 (Schriften).

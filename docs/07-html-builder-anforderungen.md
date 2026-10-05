@@ -9,8 +9,9 @@
 > Property/Context Variable (LE) und Container/Media/Name/Color/Property + Track Operation (PLE).
 > Offen: Ladetest in Cubase 15; Zeit-*Werte*, Pre-/Post-Befehle, Output Name, Secondary Value, Score-Ziele (siehe `06`, Kap. 11/13).
 >
-> **Stand Phase 4:** Die Produkt-Oberfläche ist **`le-tamer-studio.html`** (Assistent nach `12-ux-konzept.md`: Ziel → Auswahl als
-> Chips mit Klaviatur/Bereichsregler/Taktraster und Drag-&-Drop-Gruppen → Aktionskarten → Export, Live-Vorschau, Experten-Modus).
+> **Stand Phase 4:** Die Produkt-Oberfläche ist **`le-tamer-studio.html`** (Quelle `studio/`, Nuxt UI v4, siehe `13-designsystem.md`):
+> Werkzeug-Layout mit Vorlagen, Bausteinen per Klick/Drag & Drop, Inspector mit Klaviatur/Reglern/Taktraster, Vorschau,
+> Cubase-Ansicht, Befehlsliste und kompaktem Assistenten.
 > `le-tamer.html` bleibt Träger des Core-Blocks und tabellarische Referenz; der QueryBuilder-PoC ist Experten-Referenz.
 > Die Muss-Funktion 1 („Oberfläche wie in Cubase“) ist damit bewusst **ersetzt**: Musiker sollen keine Filterziele/Klammern
 > kennen müssen. Funktionsstand und Lücken je Cubase-15-Funktion: `11-funktionsmatrix-cubase15.md`.

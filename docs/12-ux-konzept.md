@@ -71,19 +71,25 @@ NoteExp, Score). Umschalten jederzeit ohne Datenverlust. Für PLE identischer Au
 * Tastatur: Tab-Reihenfolge entlang des Assistenten, Enter = weiter, Esc = Bedienfeld schließen. Kontrast ≥ 4.5:1.
 
 ## Technik
-* **Vue 3** (globaler Build, inline eingebettet, MIT) für Zustand und Reaktivität – kein Build-Schritt, eine Datei.
+* **Vue 3** mit **Nuxt UI v4** (MIT) für Bedienelemente und Zustand, gebaut mit Vite zu einer Datei (siehe `13-designsystem.md`).
 * **SortableJS** (MIT, 45 KB) für Drag & Drop von Chips, Gruppen und Aktionskarten (Touch-fähig).
 * Klaviatur, Bereichsregler, Taktraster, Piano-Roll: eigene kleine Komponenten (SVG/Canvas), weil kein Framework sie in dieser
   Form bietet.
 * **LE-Core** (Decoder/Encoder) unverändert aus `le-tamer.html`; die Studio-Oberfläche erzeugt dasselbe Modell wie bisher
   (Filter-Baum → Token-Liste, Aktionen → Liste), damit Export/Import und alle Tests weitergelten.
-* Build: `tools/build-studio.py` fügt `prototype/le-tamer-studio.src.html` + `vendor/*` + Core zu `le-tamer-studio.html` zusammen.
+* Build: `studio/` (Vite) baut die App, `studio/scripts/pack.mjs` packt sie mit Ladebildschirm in `le-tamer-studio.html`.
 
-## Umsetzungsstand
-Umgesetzt (Phase 4): alle vier Schritte, Chips mit Klaviatur/Bereichsregler/Taktraster/Kanal-Buttons/Kacheln, Drag-&-Drop-Gruppen
-(SortableJS, verschachtelt bis drei Ebenen), Aktionskarten, Piano-Roll- und Spurlisten-Vorschau mit Vorher/Nachher, Klartext, Validierung,
-Experten-Modus (Rohcodes je Chip/Karte, Schreibstil, Hex), Import mit Rohdaten-Erhalt, Export für LE/PLE/Transformer/Input Transformer.
-Noch offen: eigene MIDI-Datei als Vorschau-Clip, Rezept speichern (localStorage), Batch-Export.
+## Umsetzungsstand (Studio 2)
+Nach Rückmeldung („wirkt wie eine Präsentationsfolie, Werbetexte“) wurde der Vier-Schritt-Assistent als Hauptoberfläche verworfen.
+Studio 2 ist ein **Werkzeug-Layout**, wie man es aus DAWs kennt:
 
-## Abgrenzung zum QueryBuilder-PoC
-Der PoC bleibt als Experten-Referenz und Testfall; die Produkt-Oberfläche ist Studio. Beide teilen Core und Datenmodell.
+* Kopfleiste: Werkzeug (LE/PLE/Transformer/Input Transformer), Preset-Name, Rückgängig/Wiederholen, Assistent, Befehle, Öffnen, Exportieren.
+* Links: Vorlagen mit automatisch erzeugter Kurzbeschreibung, eigene Vorlagen (lokal im Browser), Datei öffnen.
+* Mitte: Bedingungen als Bausteine (Klick oder Drag & Drop aus der Palette), „und“/„oder“ als klickbare Wörter, Gruppen statt Klammern;
+  Funktion; Aktionen als sortierbare Zeilen mit direkten Zahlenfeldern.
+* Rechts: Inspector für den ausgewählten Baustein (Klaviatur, Bereichsregler mit Werteverteilung, Taktraster, Kanal-Raster, Listen)
+  bzw. Preset-Eigenschaften und Zielordner.
+* Unten: Vorschau (Treffer/Ergebnis als Piano-Roll mit Velocity- bzw. CC-Spur, PLE als Spurliste), Cubase-Ansicht (Zeilen wie im
+  Logical Editor), Datei als Hex.
+* Der Assistent ist ein Dialog für vier häufige Aufgaben und schreibt das Ergebnis in den Editor.
+* Texte: sachlich, Bezeichnungen aus Musikersicht, Cubase-Begriffe als Zusatz; Hinweise nur bei echten Problemen.

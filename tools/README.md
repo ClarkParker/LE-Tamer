@@ -1,17 +1,20 @@
 # tools/
 
-## build-studio.py
-Baut **`le-tamer-studio.html`** (die Produkt-Oberfläche) aus `prototype/le-tamer-studio.src.html`: `<!--INLINE:pfad-->` wird durch
-den Dateiinhalt ersetzt (Vue 3, SortableJS), `<!--INLINE:le-core-->` durch den Core-Script-Block aus `le-tamer.html`,
-`<!--INLINE-JSON:pfad-->` durch JSON (`data/time-templates.json`). Ergebnis: eine einzige, offline nutzbare HTML-Datei.
+## Studio bauen (`studio/`)
+Quelle der Musiker-Oberfläche: Vite + Vue 3 + Nuxt UI. Nur zum Bauen nötig; die fertige `le-tamer-studio.html` braucht nichts davon.
 
 ```bash
-python3 tools/build-studio.py
+cd studio
+npm ci            # feste Versionen aus package-lock.json
+npm run build     # vite build → dist/, danach scripts/pack.mjs → ../le-tamer-studio.html
+node scripts/pack.mjs --embed ziel.html   # zusätzlich: Variante ohne <html>/<head>/<body> zum Einbetten
 ```
-Der Core (Decoder/Encoder) lebt nur einmal, in `le-tamer.html`; Studio und QueryBuilder-PoC binden ihn beim Bauen ein.
+Der Core (Decoder/Encoder) lebt nur einmal, im `<script id="le-core">`-Block von `le-tamer.html`; `vite.config.mjs` liest ihn
+als virtuelles Modul `virtual:le-core` ein. Icons und Schriften werden eingebettet, Lizenztexte aller Pakete im Bundle werden
+automatisch gesammelt und ans Ende der HTML-Datei geschrieben.
 
 ## build-poc.py
-Dasselbe für `prototype/poc-querybuilder.html` (jQuery QueryBuilder, Experten-Referenz).
+Baut `prototype/poc-querybuilder.html` (jQuery QueryBuilder, Experten-Referenz) aus `.src.html`, `vendor/` und dem Core.
 
 ## leparse.py
 Decoder für LE-/PLE-/Transformer-Preset-Dateien (nur Python-Standardbibliothek, Python ≥ 3.8).

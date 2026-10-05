@@ -2,39 +2,40 @@
 
 Werkzeugkasten, um den **Logical Editor von Cubase 15** (und seine Geschwister: Project Logical Editor,
 Transformer, Track/Project Input Transformer) zu zähmen. Kern ist **LE-Tamer Studio** – eine einzelne HTML-Datei, mit der
-Musiker Presets per Assistent, Chips, Klaviatur und Drag & Drop bauen und als Cubase-`.xml` speichern, ohne Logical-Editor-
-Fachbegriffe kennen zu müssen.
+Musiker Presets aus Bausteinen zusammenstellen (Klaviatur, Regler, Taktraster, Drag & Drop), live am Beispiel-Clip prüfen
+und als Cubase-`.xml` speichern. Läuft offline per Doppelklick, ohne Installation.
 
 ## Schnellstart
 
-1. **`le-tamer-studio.html`** im Browser öffnen (Doppelklick, kein Server, offline).
-2. Ziel wählen („Velocity formen“, „Controller bearbeiten“, „Spuren & Parts“ …) oder ein Rezept laden.
-3. Auswahl als Chips einstellen (Klaviatur, Bereichsregler, Taktraster, Kanal-Buttons); Chips in die gestrichelte Zone ziehen =
-   ODER-Gruppe (Klammern entstehen automatisch). Die Live-Vorschau zeigt, welche Noten getroffen werden und was danach passiert.
-4. Funktion und Änderungs-Karten wählen, speichern. Die Datei in den angezeigten Ordner kopieren
-   (Windows: `Dokumente\Steinberg\Cubase 15\User Presets\Logical Edit\`), in Cubase den Preset-Browser öffnen.
+1. **`le-tamer-studio.html`** im Browser öffnen (Doppelklick, kein Server, offline; Chrome/Edge ab 80, Firefox ab 113, Safari ab 16.4).
+2. Links eine Vorlage wählen, den **Assistenten** öffnen oder Bausteine anklicken bzw. auf die Fläche ziehen.
+3. Einen Baustein anklicken und rechts im Inspector einstellen (Klaviatur, Bereichsregler, Taktraster …). „und“/„oder“ zwischen
+   Bausteinen per Klick umschalten; einen Baustein auf „Hier ablegen: neue Oder-Gruppe“ ziehen bildet eine Klammer.
+4. Funktion und Aktionen wählen. Unten zeigt die Vorschau Treffer und Ergebnis am Beispiel-Clip, die Cubase-Ansicht die Zeilen
+   so, wie Cubase sie anzeigt.
+5. **Exportieren** (Strg+S) und die Datei in den angezeigten Ordner legen
+   (Windows: `Dokumente\Steinberg\Cubase 15\User Presets\Logical Edit\`). Strg+K öffnet die Befehlsliste.
 
 Bestehende Presets (auch Factory-Presets) lassen sich per Drag & Drop öffnen, ändern und neu speichern; unbekannte Zeilen bleiben
 als Rohdaten erhalten.
 
 ## Status
 
-Phase 4 – **LE-Tamer Studio** (aktuell):
+Phase 4 – **LE-Tamer Studio 2** (aktuell):
 
-* Neue Oberfläche nach `docs/12-ux-konzept.md`: 4-Schritt-Assistent (Ziel → Auswahl → Aktion → Fertig), 19 Chip-Arten mit
-  grafischen Bedienfeldern, verschachtelbare UND/ODER-Gruppen per Drag & Drop (SortableJS), Aktionskarten mit Reglern,
-  Live-Vorschau als Piano-Roll (LE) bzw. Spurliste (PLE), Klartext-Satz, Validierung, Experten-Modus mit Rohwerten,
-  36 Rezepte, Export für LE, PLE, Transformer und Input Transformer. Technik: Vue 3 + SortableJS, eingebettet (MIT).
-* **Vollständigkeits-Matrix** aller Cubase-15-Funktionen mit Belegstatus: `docs/11-funktionsmatrix-cubase15.md`. Neu belegt
-  und umgesetzt: Zeitdifferenzen in Sekunden/Samples (Position ± ms, Länge in Sekunden), Position/Länge in Ticks, Name-,
-  Farb-, Trim- und NoteExp-Aktionen, Last Event, Insert-/Send-Slot. Die noch fehlenden Codes (Secondary Value, Mirror,
-  Transpose to Scale, Score-Ziele, Pre-/Post-Befehle …) stehen dort als **Checkliste von Mini-Presets**, die in Cubase 15
-  gespeichert und mit `tools/learn.py` ausgewertet werden.
-* Treue des Dateiformats, gemessen am 1379-Preset-Korpus: Decoder→Encoder **1379/1379 byteidentisch**. Studio-Import→Export
-  (ohne Änderung): 1275 Dateien byteidentisch bzw. nur mit der Cubase-12+-Trailer-Version 0x1100 statt 0, 84 Dateien mit
-  eindeutig gesetzten Klammern bei gemischten UND/ODER-Zeilen, 20 Abweichungen (Cubase-SX-Altformat, defekte Dateien).
-  Neu gebaute Presets sind byteidentisch mit Factory-Presets (bis auf die Trailer-Version).
-* **Offen:** der Ladetest in Cubase 15 selbst (bitte eine Studio-Datei laden und melden), danach die Checkliste aus `docs/11`.
+* Werkzeug-Layout statt Folien-Assistent: Vorlagen links, Arbeitsfläche mit Bedingungen → Funktion → Aktionen, Inspector rechts,
+  Vorschau (Piano-Roll, Cubase-Ansicht, Hex) unten, Statuszeile mit echten Hinweisen. Befehlsliste (Strg+K), Rückgängig/Wiederholen,
+  Kontextmenüs, Datei-Drop, kompakter Assistent für vier häufige Aufgaben.
+* Designsystem **Nuxt UI v4** (Vue 3, Reka UI, Tailwind CSS v4; MIT) – Recherche und Begründung in `docs/13-designsystem.md`.
+  Eigene Bedienelemente für Klaviatur, Taktraster, Kanal-Raster und Piano-Roll.
+* Monolith mit Ladebildschirm: Bibliotheken liegen komprimiert in der HTML-Datei und werden beim Öffnen im Browser entpackt
+  (`studio/scripts/pack.mjs`). Getestet mit gesperrtem Netz: kein einziger externer Abruf.
+* Treue zum Dateiformat: unveränderte Importe werden byteidentisch zurückgeschrieben (1359 von 1379 Korpus-Dateien; Rest ist
+  das Cubase-SX-Altformat, das im aktuellen Format gespeichert wird; Unterschied sonst nur die Cubase-12+-Versionsnummer im Trailer).
+  Neu gebaute Presets sind identisch mit Steinberg-Factory-Presets.
+* **Vollständigkeits-Matrix** aller Cubase-15-Funktionen mit Belegstatus und Checkliste der noch fehlenden Mini-Presets:
+  `docs/11-funktionsmatrix-cubase15.md`. Ungeprüfte Codes sind im Studio mit einem kleinen Kreis markiert.
+* **Offen:** der Ladetest in Cubase 15 selbst, danach die Checkliste aus `docs/11`.
 
 Phase 3 – **Belege statt Annahmen**: 579 echte Presets (Forum 2011–2026 inkl. Cubase 13/14/15, Factory-PLE, r-koubou,
 Metagrid, Steinberg-Factory-LE) ausgewertet → `docs/10-belege.md`, `docs/06` Kapitel 13 (Umbenennungen ab Cubase 13,
@@ -51,7 +52,7 @@ Binärformat reverse-engineered (`docs/06`), Codes maschinenlesbar in `data/le-c
 | Pfad | Inhalt |
 |------|--------|
 | `le-tamer-studio.html` | **LE-Tamer Studio** – die Oberfläche für Musiker (eine Datei, offline) |
-| `prototype/le-tamer-studio.src.html` | Quelle des Studios (ohne eingebettete Bibliotheken); bauen mit `tools/build-studio.py` |
+| `studio/` | Quelle des Studios (Vite, Vue 3, Nuxt UI); `npm ci && npm run build` erzeugt `le-tamer-studio.html` |
 | `le-tamer.html` | Tabellarischer Builder + **Core** (Decoder/Encoder) |
 | `prototype/poc-querybuilder.html` | PoC mit jQuery QueryBuilder (Experten-Referenz) |
 | `docs/01-ueberblick.md` | Die fünf logischen Werkzeuge in Cubase 15, Editionen, Menüpfade |
@@ -64,15 +65,16 @@ Binärformat reverse-engineered (`docs/06`), Codes maschinenlesbar in `data/le-c
 | `docs/08-quellen.md` · `docs/09-framework-evaluation.md` · `docs/10-belege.md` | Quellen, Framework-Vergleich, Belegzahlen (generiert) |
 | `docs/11-funktionsmatrix-cubase15.md` | **Alle Cubase-15-Funktionen mit Status** + Checkliste der Mini-Presets |
 | `docs/12-ux-konzept.md` | UX-Konzept des Studios |
+| `docs/13-designsystem.md` | Recherche fertiger Designsysteme, Entscheidung, Auslieferung als Monolith |
 | `data/le-codes.json` | Codes mit Konfidenz (Quelle der Wahrheit) · `data/time-templates.json` Byte-Vorlagen für Cursor/Cycle |
-| `tools/` | `build-studio.py`, `build-poc.py`, `leparse.py`, `learn.py`, `roundtrip-test.mjs`, `evidence.py` (siehe `tools/README.md`) |
-| `vendor/` | Vue 3, SortableJS, jQuery, QueryBuilder, Bootstrap (MIT), siehe `vendor/LICENSES.md` |
+| `tools/` | `build-poc.py`, `leparse.py`, `learn.py`, `roundtrip-test.mjs`, `evidence.py` (siehe `tools/README.md`) |
+| `vendor/` | jQuery, QueryBuilder, Bootstrap für den PoC (MIT), siehe `vendor/LICENSES.md` |
 | `samples/` | Vier Steinberg-Factory-Presets (Cubase 13) als Testdateien |
 
 ## Entwickeln und testen
 
 ```bash
-python3 tools/build-studio.py                                  # Studio aus .src.html + vendor + Core bauen
+cd studio && npm ci && npm run build && cd ..                  # Studio bauen (Node 20+, nur auf dem Entwicklungsrechner)
 node tools/roundtrip-test.mjs samples/steinberg-factory-c13 "<weitere Preset-Ordner>"   # Decode→Encode byteidentisch?
 python3 tools/leparse.py --tree samples/steinberg-factory-c13/Extract_Alto.xml          # Datei ansehen
 python3 tools/learn.py "<Ordner mit Checklisten-Presets>"       # neue Codes aus Cubase-15-Mini-Presets lernen
